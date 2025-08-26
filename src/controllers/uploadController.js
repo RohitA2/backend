@@ -6,7 +6,7 @@ exports.uploadFile = (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const fileUrl = `${process.env.BASE_URL || "http://13.204.3.50"}/uploads/${req.file.filename}`;
+  const fileUrl = `${process.env.BASE_URL || "http://13.204.3.50"}/api/uploads/${req.file.filename}`;
 
   res.json({
     success: true,
