@@ -7,7 +7,8 @@ const recipientRoutes = require("./recipientRoutes");
 const emailRoutes = require("./emailRoutes");
 const documentRoutes = require("./documentRoutes");
 const headerBlockRoutes = require("./headerBlockRoutes");
-const upload = require("./uploadRoutes");
+const uploadRoutes = require("./uploadRoutes");
+const upload = require("./upload");
 
 module.exports = (app) => {
   // Authentication routes for all roles
