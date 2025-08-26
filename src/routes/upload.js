@@ -23,7 +23,19 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const fileFilter = (req, file, cb) => {
+  const filetypes = /jpeg|jpg|png|gif|jfif|mp3|mp4|mov|avi|mkv/; // Allowed extensions
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = filetypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    return cb(null, true); // Accept the file
+  } else {
+    cb("Error: Only images are allowed!");
+  }
+};
+
+const upload = multer({ storage, fileFilter });
 
 // single file upload route
 router.post("/", upload.single("file"), uploadFile);
