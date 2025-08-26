@@ -7,7 +7,6 @@ const recipientRoutes = require("./recipientRoutes");
 const emailRoutes = require("./emailRoutes");
 const documentRoutes = require("./documentRoutes");
 const headerBlockRoutes = require("./headerBlockRoutes");
-const uploadRoutes = require("./uploadRoutes");
 const upload = require("./upload");
 
 module.exports = (app) => {
