@@ -19,5 +19,5 @@ module.exports = (app) => {
   app.use("/api", emailRoutes);
   app.use("/api", documentRoutes);
   app.use("/api", headerBlockRoutes);
-  app.use("/api/upload", upload);
+  app.use("/upload", upload);
 };
