@@ -62,6 +62,11 @@ const HeaderBlock = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    layoutStyles: {
+      type: DataTypes.JSONB, // Store all styling and layout data
+      allowNull: true,
+      defaultValue: {},
+    },
   },
   {
     tableName: "HeaderBlock",
