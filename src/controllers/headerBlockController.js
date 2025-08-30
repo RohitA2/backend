@@ -65,33 +65,76 @@ exports.createHeaderBlock = async (req, res) => {
 };
 
 // Get header block by ID
+// exports.getHeaderBlock = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     console.log("Request Body:", req.params.id);
+    
+//     const block = await db.models.HeaderBlock.findByPk(id);
+
+//     if (!block) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Header block not found",
+//       });
+//     }
+
+//     res.json({
+//       success: true,
+//       data: block,
+//     });
+//   } catch (error) {
+//     console.error("Error fetching header block:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Error fetching header block",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 exports.getHeaderBlock = async (req, res) => {
   try {
-    const { id } = req.params;
-    console.log("Request Body:", req.params.id);
-    
-    const block = await db.models.HeaderBlock.findByPk(id);
+    let { ids } = req.query; // ids can be "1" or "1,2,3"
+    console.log("Query IDs:", ids);
 
-    if (!block) {
+    if (!ids) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide at least one id in query",
+      });
+    }
+
+    // Convert string to array (handles single or multiple)
+    const idArray = ids.split(",").map((id) => id.trim());
+
+    // Fetch from DB
+    const blocks = await db.models.HeaderBlock.findAll({
+      where: { id: idArray },
+    });
+
+    if (!blocks || blocks.length === 0) {
       return res.status(404).json({
         success: false,
-        message: "Header block not found",
+        message: "No header blocks found",
       });
     }
 
     res.json({
       success: true,
-      data: block,
+      data: blocks,
     });
   } catch (error) {
-    console.error("Error fetching header block:", error);
+    console.error("Error fetching header blocks:", error);
     res.status(500).json({
       success: false,
-      message: "Error fetching header block",
+      message: "Error fetching header blocks",
       error: error.message,
     });
   }
 };
+
 
 // Update header block
 exports.updateHeaderBlock = async (req, res) => {
