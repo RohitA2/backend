@@ -39,7 +39,11 @@ exports.update = async (req, res) => {
   try {
     const { id } = req.params;
     const userData = req.body;
+    console.log("User Data:", userData);
+    
     const updatedUser = await myServices.update(db.models.User, id, userData);
+    console.log("Updated User:", updatedUser);
+    
 
     if (!updatedUser.success) {
       return res.status(404).json(updatedUser);

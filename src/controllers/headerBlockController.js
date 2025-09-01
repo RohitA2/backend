@@ -22,7 +22,7 @@ exports.createHeaderBlock = async (req, res) => {
       userId,
     } = req.body;
 
-    console.log("Request Body:", req.body.userId);
+    console.log("Request Body:", req.body);
     
 
     // Extract styles into a JSON object

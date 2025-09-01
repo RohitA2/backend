@@ -8,6 +8,7 @@ const emailRoutes = require("./emailRoutes");
 const documentRoutes = require("./documentRoutes");
 const headerBlockRoutes = require("./headerBlockRoutes");
 const upload = require("./upload");
+const partiesRoutes = require("./partiesRoutes");
 
 module.exports = (app) => {
   // Authentication routes for all roles
@@ -20,4 +21,5 @@ module.exports = (app) => {
   app.use("/api", documentRoutes);
   app.use("/api", headerBlockRoutes);
   app.use("/upload", upload);
+  app.use("/parties", partiesRoutes);
 };

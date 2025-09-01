@@ -13,9 +13,10 @@ exports.getRecipient = async (req, res) => {
 };
 
 exports.updateRecipient = async (req, res) => {
+  const { id } = req.params;
   const response = await myServices.update(
     db.models.Recipient,
-    req.params.id,
+    id,
     req.body
   );
   res.json(response);
