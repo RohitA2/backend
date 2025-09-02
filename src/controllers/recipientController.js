@@ -14,6 +14,8 @@ exports.getRecipient = async (req, res) => {
 
 exports.updateRecipient = async (req, res) => {
   const { id } = req.params;
+  console.log("i am from recipient controller:", id);
+  
   const response = await myServices.update(
     db.models.Recipient,
     id,
