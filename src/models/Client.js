@@ -9,7 +9,7 @@ const Client = sequelize.define(
       autoIncrement: true,
       primaryKey: true,
     },
-    user_id: {
+    userId: {
       type: DataTypes.INTEGER,
       allowNull: true,
       onDelete: "CASCADE",

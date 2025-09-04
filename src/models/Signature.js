@@ -11,10 +11,23 @@ const Signature = sequelize.define(
     },
     blockId: {
       type: DataTypes.STRING,
-      allowNull: true, 
+      allowNull: true,
     },
     signature: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    comment: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    method: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },
