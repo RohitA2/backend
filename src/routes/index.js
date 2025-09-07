@@ -11,6 +11,9 @@ const upload = require("./upload");
 const partiesRoutes = require("./partiesRoutes");
 const signatureRoutes = require("./signatureRoutes");
 const scheduleRoutes = require("./scheduleRoutes");
+const pdfBlockRoutes = require("./pdfblocks");
+const videoBlockRoutes = require("./videoBlockRoutes");
+const attachmentRoutes = require("./attachments");
 
 module.exports = (app) => {
   // Authentication routes for all roles
@@ -26,4 +29,7 @@ module.exports = (app) => {
   app.use("/parties", partiesRoutes);
   app.use("/signatures", signatureRoutes);
   app.use("/schedules", scheduleRoutes);
+  app.use("/api/pdfblocks", pdfBlockRoutes);
+  app.use("/video", videoBlockRoutes);
+  app.use("/attachments", attachmentRoutes);
 };
