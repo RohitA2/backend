@@ -41,6 +41,10 @@ const Client = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+     parentId: {
+          type: DataTypes.STRING, // Changed to STRING for flexibility
+          allowNull: true,
+        },
   },
   {
     tableName: "Clients",

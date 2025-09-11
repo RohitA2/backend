@@ -2,7 +2,7 @@
 const userRoutes = require("./userRoutes");
 const authRoutes = require("./authRoutes");
 const uploadRoutes = require("./uploadRoutes");
-const sendMessageRoute = require("./sendMessageRoute");
+// const sendMessageRoute = require("./sendMessageRoute");
 const recipientRoutes = require("./recipientRoutes");
 const emailRoutes = require("./emailRoutes");
 const documentRoutes = require("./documentRoutes");
@@ -14,13 +14,17 @@ const scheduleRoutes = require("./scheduleRoutes");
 const pdfBlockRoutes = require("./pdfblocks");
 const videoBlockRoutes = require("./videoBlockRoutes");
 const attachmentRoutes = require("./attachments");
+const parentsRoutes = require("./parentsRoutes");
+const textRoutes = require("./TextRoutes");
+const termsRoutes = require("./TermsRoutes");
+const VerifyToken = require("./VerifyToken");
 
 module.exports = (app) => {
   // Authentication routes for all roles
   app.use("/api/users", userRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api", uploadRoutes);
-  app.use("/api", sendMessageRoute);
+  // app.use("/api", sendMessageRoute);
   app.use("/api", recipientRoutes);
   app.use("/api", emailRoutes);
   app.use("/api", documentRoutes);
@@ -32,4 +36,8 @@ module.exports = (app) => {
   app.use("/api/pdfblocks", pdfBlockRoutes);
   app.use("/video", videoBlockRoutes);
   app.use("/attachments", attachmentRoutes);
+  app.use("/parents", parentsRoutes);
+  app.use("/text", textRoutes);
+  app.use("/terms", termsRoutes);
+  app.use("/verify", VerifyToken);
 };

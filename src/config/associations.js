@@ -26,16 +26,6 @@ sequelize.models = models;
 const defineAssociations = () => {
   // Example of associations (modify according to your models)
 
-  models.User.hasMany(models.Transaction, {
-    foreignKey: "user_id",
-    as: "transactions",
-  });
-
-  models.Transaction.belongsTo(models.User, {
-    foreignKey: "target_user_id",
-    as: "targetUser",
-  });
-
   // User ke apne clients
   models.User.hasMany(models.Client, {
     foreignKey: "user_id",
@@ -56,6 +46,41 @@ const defineAssociations = () => {
   models.Recipient.belongsTo(models.User, {
     foreignKey: "user_id",
     as: "user",
+  });
+
+  models.User.hasMany(models.Parent, {
+    as: "parents",
+    foreignKey: "user_id",
+    onDelete: "CASCADE",
+    hooks: true,
+  });
+
+  models.Parent.belongsTo(models.User, {
+    as: "user",
+    foreignKey: "user_id",
+  });
+
+  models.Parent.hasMany(models.Block, {
+    as: "blocks",
+    foreignKey: "parentId",
+    onDelete: "CASCADE",
+    hooks: true,
+  });
+
+  models.Block.belongsTo(models.Parent, {
+    as: "parent",
+    foreignKey: "parentId",
+  });
+
+  models.ProposalEmail.hasMany(models.ProposalEmailRecipient, {
+    foreignKey: "proposal_email_id",
+    as: "recipients",
+    onDelete: "CASCADE",
+  });
+
+  models.ProposalEmailRecipient.belongsTo(models.ProposalEmail, {
+    foreignKey: "proposal_email_id",
+    as: "proposal",
   });
 };
 

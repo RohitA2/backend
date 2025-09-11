@@ -45,6 +45,20 @@ exports.getScheduleById = async (req, res) => {
   }
 };
 
+//get by blockId
+exports.getScheduleByBlockId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const schedule = await db.models.Schedule.findAll({
+      where: { blockId: id },
+    });
+    if (!schedule) return res.status(404).json({ error: "Schedule not found" });
+    res.json({ success: true, data: schedule });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Delete schedule
 exports.deleteSchedule = async (req, res) => {
   try {

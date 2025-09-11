@@ -17,6 +17,10 @@ const Document = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+     parentId: {
+      type: DataTypes.STRING, // Changed to STRING for flexibility
+      allowNull: true,
+    },
   },
   {
     tableName: "Document",

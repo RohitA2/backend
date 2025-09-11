@@ -66,6 +66,10 @@ const Recipient = sequelize.define(
       type: DataTypes.ENUM("Active", "Inactive"),
       defaultValue: "Active",
     },
+     parentId: {
+      type: DataTypes.STRING, // Changed to STRING for flexibility
+      allowNull: true,
+    },
   },
   {
     tableName: "Recipients",

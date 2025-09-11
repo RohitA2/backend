@@ -6,6 +6,6 @@ const router = express.Router();
 
 router.post("/save", saveParties);
 router.get("/:userId", getParties);
-router.get("/:partyId", getPartiesById);
+router.get("/block/:id", getPartiesById);
 
 module.exports = router;

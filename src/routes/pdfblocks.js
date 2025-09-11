@@ -32,23 +32,28 @@ router.post("/", upload.single("pdf"), async (req, res) => {
     const saved = await db.models.PdfBlock.create({
       blockId: req.body.blockId,
       user_id: req.body.user_id,
+      parentId: req.body.parentId,
       pdf: pdfUrl,
-      filename: req.file.filename
+      filename: req.file.filename,
     });
 
-    res.json({ success: true, data: saved, message: "PDF saved successfully" ,id:saved.id});
+    res.json({
+      success: true,
+      data: saved,
+      message: "PDF saved successfully",
+      id: saved.id,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-
 //by pdfId
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const pdfBlock = await db.models.PdfBlock.findOne({ where: { id } });
+    const pdfBlock = await db.models.PdfBlock.findOne({ where: {blockId: id } });
     res.json({ success: true, data: pdfBlock });
   } catch (err) {
     console.error(err);

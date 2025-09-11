@@ -13,6 +13,10 @@ const HeaderBlock = sequelize.define(
       type: DataTypes.TEXT, // Changed to TEXT for longer URLs
       allowNull: true,
     },
+    parentId: {
+      type: DataTypes.STRING, // Changed to STRING for flexibility
+      allowNull: true,
+    },
     backgroundImage: {
       type: DataTypes.TEXT, // Changed to TEXT for longer URLs
       allowNull: true,

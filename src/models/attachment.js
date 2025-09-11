@@ -9,37 +9,41 @@ const Attachment = sequelize.define(
       autoIncrement: true,
       primaryKey: true,
     },
-    blockId:{
+    blockId: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    user_id:{
+    user_id: {
       type: DataTypes.INTEGER,
-      allowNull: true
+      allowNull: true,
     },
-    originalName:{
+    originalName: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
     },
-    displayName:{
+    displayName: {
       type: DataTypes.STRING,
-      allowNull: true
-    }, 
+      allowNull: true,
+    },
     filename: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    path:{  
+    path: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    mime:{
+    mime: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
     },
-    size:{
+    size: {
       type: DataTypes.STRING,
-      allowNull: true
+      allowNull: true,
+    },
+    parentId: {
+      type: DataTypes.STRING, // Changed to STRING for flexibility
+      allowNull: true,
     },
   },
   {

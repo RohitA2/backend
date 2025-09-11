@@ -13,12 +13,20 @@ const Parties = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    blockId:{
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     toParty: {
       type: DataTypes.JSONB, // ✅ JSON column in Postgres
       allowNull: true,
     },
     fromParty: {
       type: DataTypes.JSONB, // ✅ JSON column in Postgres
+      allowNull: true,
+    },
+     parentId: {
+      type: DataTypes.STRING, // Changed to STRING for flexibility
       allowNull: true,
     },
   },

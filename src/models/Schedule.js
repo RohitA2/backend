@@ -25,6 +25,10 @@ const Schedule = sequelize.define("Schedule", {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
+   parentId: {
+        type: DataTypes.STRING, // Changed to STRING for flexibility
+        allowNull: true,
+      },
 });
 
 module.exports = Schedule;

@@ -30,6 +30,10 @@ const Signature = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    parentId: {
+      type: DataTypes.STRING, 
+      allowNull: true,
+    },
   },
   {
     tableName: "Signature",

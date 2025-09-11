@@ -28,7 +28,10 @@ const VideoBlock = sequelize.define(
     videoId:{
       type:DataTypes.STRING,
       allowNull:true
-    }
+    } ,parentId: {
+      type: DataTypes.STRING, // Changed to STRING for flexibility
+      allowNull: true,
+    },
   },
   {
     tableName: "VideoBlock",
