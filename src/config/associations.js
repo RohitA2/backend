@@ -115,6 +115,20 @@ const defineAssociations = () => {
     as: "proposalEmail",
     constraints: false,
   });
+
+  // 🔹 ProposalEmail → Signature (1:N via parentId)
+  models.ProposalEmail.hasMany(models.Signature, {
+    foreignKey: "parentId",
+    sourceKey: "parentId",
+    as: "signatures",
+    constraints: false,
+  });
+  models.Signature.belongsTo(models.ProposalEmail, {
+    foreignKey: "parentId",
+    targetKey: "parentId",
+    as: "proposalEmail",
+    constraints: false,
+  });
 };
 
 module.exports = defineAssociations;

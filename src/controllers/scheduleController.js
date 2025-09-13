@@ -125,3 +125,88 @@ exports.scheduleByUserId = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getProposalsByUserId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // console.log("➡️ Fetching proposals for userId:", id);
+
+    const userWithProposals = await db.models.User.findOne({
+      where: { id },
+      include: [
+        {
+          model: db.models.ProposalEmail,
+          as: "proposalEmails",
+          include: [
+            { model: db.models.ProposalEmailRecipient, as: "recipients" },
+            { model: db.models.Schedule, as: "schedules" },
+            { model: db.models.Signature, as: "signatures" },
+          ],
+        },
+        {
+          model: db.models.Schedule,
+          as: "schedules", // user-level schedules
+        },
+      ],
+    });
+
+    if (!userWithProposals) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    // 🔹 Group proposals by parentId
+    const grouped = {};
+    userWithProposals.proposalEmails.forEach((proposal) => {
+      const parentId = proposal.parentId || proposal.id; // fallback if null
+
+      if (!grouped[parentId]) {
+        grouped[parentId] = {
+          parentId,
+          proposals: [],
+          recipients: [],
+          schedules: [],
+          signatures: [],
+        };
+      }
+
+      grouped[parentId].proposals.push({
+        id: proposal.id,
+        proposalName: proposal.proposalName,
+        fromName: proposal.fromName,
+        fromEmail: proposal.fromEmail,
+        expirationDate: proposal.expirationDate,
+        link: proposal.link,
+      });
+
+      if (proposal.recipients)
+        grouped[parentId].recipients.push(...proposal.recipients);
+      if (proposal.schedules)
+        grouped[parentId].schedules.push(...proposal.schedules);
+      if (proposal.signatures)
+        grouped[parentId].signatures.push(...proposal.signatures);
+    });
+
+    // ✅ Response
+    res.json({
+      success: true,
+      user: {
+        id: userWithProposals.id,
+        firstName: userWithProposals.firstName,
+        lastName: userWithProposals.lastName,
+        email: userWithProposals.email,
+        companyName: userWithProposals.companyName,
+      },
+      groupedProposals: Object.values(grouped),
+      userSchedules: userWithProposals.schedules || [],
+    });
+  } catch (error) {
+    console.error("❌ Error fetching proposals:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};

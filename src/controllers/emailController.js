@@ -4,7 +4,8 @@ const { v4: uuidv4 } = require("uuid");
 
 exports.sendProposalEmail = async (req, res) => {
   try {
-    const { headerId, userId, name, from, to, expirationDate, link,parentId } = req.body;
+    const { headerId, userId, name, from, to, expirationDate, link, parentId } =
+      req.body;
 
     console.log(
       "headerId, userId, name, from, to, expirationDate, link",
@@ -124,7 +125,7 @@ exports.sendProposalEmail = async (req, res) => {
           errorMessage: err.message,
           status: "failed",
           token,
-          token_expires_at: tokenExpires,
+          tokenExpiresAt: tokenExpires,
         });
 
         results.push({ email: recipient.email, status: "failed" });

@@ -9,8 +9,8 @@ exports.uploadFile = (req, res) => {
   }
 
   const fileUrl = `${
-    process.env.BASE_URL || "http://13.204.3.50"
-  }/api/uploads/${req.file.filename}`;
+    process.env.BASE_URL || "http://localhost:5000"
+  }/uploads/${req.file.filename}`;
 
   res.json({
     success: true,
