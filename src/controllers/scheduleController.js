@@ -1,15 +1,22 @@
 // Create schedule
+const e = require("cors");
 const db = require("../config/database");
 exports.createSchedule = async (req, res) => {
   try {
-    const { date, time, userId ,blockId} = req.body;
+    const { date, time, userId, blockId, parentId } = req.body;
     // console.log(" i am from blockId:", blockId);
-    
+
     if (!date || !time || !userId) {
       return res.status(400).json({ error: "Date and time are required" });
     }
 
-    const newSchedule = await db.models.Schedule.create({ date, time, userId, blockId });
+    const newSchedule = await db.models.Schedule.create({
+      date,
+      time,
+      userId,
+      blockId,
+      parentId,
+    });
     res.status(201).json({
       message: "Schedule saved successfully",
       success: true,
@@ -71,3 +78,50 @@ exports.deleteSchedule = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.scheduleByUserId = async (req, res) => {
+  const t = await db.sequelize.transaction();
+  try {
+    const { id } = req.params;
+
+    // Step 1: Get all schedules for this user
+    const schedules = await db.models.Schedule.findAll({
+      where: { userId: id },
+      transaction: t,
+    });
+
+    if (!schedules || schedules.length === 0) {
+      await t.rollback();
+      return res.status(404).json({ error: "No schedules found" });
+    }
+
+    // Step 2: Extract parentIds from schedules
+    const parentIds = schedules.map((s) => s.parentId).filter(Boolean);
+
+    // Step 3: Fetch proposals linked via parentId
+    const proposalEmails = await db.models.ProposalEmail.findAll({
+      where: { parentId: parentIds },
+      transaction: t,
+    });
+
+    await t.commit();
+
+    // Step 4: Attach proposal details to schedules
+    const combined = schedules.map((schedule) => {
+      const proposal = proposalEmails.find(
+        (p) => p.parentId === schedule.parentId
+      );
+      return {
+        ...schedule.toJSON(),
+        proposalEmail: proposal ? proposal.toJSON() : null,
+      };
+    });
+
+    res.json({ success: true, data: combined });
+  } catch (error) {
+    await t.rollback();
+    res.status(500).json({ error: error.message });
+  }
+};
+
+

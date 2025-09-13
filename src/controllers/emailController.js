@@ -4,9 +4,21 @@ const { v4: uuidv4 } = require("uuid");
 
 exports.sendProposalEmail = async (req, res) => {
   try {
-    const { headerId, userId, name, from, to, expirationDate, link } = req.body;
+    const { headerId, userId, name, from, to, expirationDate, link,parentId } = req.body;
 
-    if (!headerId || !userId || !name || !from || !to) {
+    console.log(
+      "headerId, userId, name, from, to, expirationDate, link",
+      headerId,
+      userId,
+      name,
+      from,
+      to,
+      expirationDate,
+      link,
+      parentId
+    );
+
+    if (!headerId || !userId || !name || !from || !to || !link || !parentId) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -20,7 +32,8 @@ exports.sendProposalEmail = async (req, res) => {
 
     // 1. Create parent ProposalEmail record
     const proposalEmail = await db.models.ProposalEmail.create({
-      headerIds: headerId,
+      headerId,
+      parentId: parentId,
       userId,
       proposalName: name,
       fromName: from.fullName,

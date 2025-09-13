@@ -6,6 +6,7 @@ const {
   getScheduleById,
   deleteSchedule,
   getScheduleByBlockId,
+  scheduleByUserId,
 } = require("../controllers/scheduleController");
 
 const router = express.Router();
@@ -15,5 +16,6 @@ router.get("/", getSchedules); // List all
 router.get("/:id", getScheduleById); // Get by ID
 router.delete("/:id", deleteSchedule); // Delete
 router.get("/sign/:id", getScheduleByBlockId);
+router.get("/user/:id", scheduleByUserId);
 
 module.exports = router;

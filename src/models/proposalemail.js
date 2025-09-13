@@ -9,7 +9,7 @@ const ProposalEmail = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    headerIds: {
+    parentId: {
       type: DataTypes.TEXT,
     },
     userId: {

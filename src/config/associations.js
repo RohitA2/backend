@@ -82,6 +82,39 @@ const defineAssociations = () => {
     foreignKey: "proposal_email_id",
     as: "proposal",
   });
+
+  models.User.hasMany(models.ProposalEmail, {
+    foreignKey: "userId",
+    as: "proposalEmails",
+  });
+  models.ProposalEmail.belongsTo(models.User, {
+    foreignKey: "userId",
+    as: "user",
+  });
+
+  // 🔹 User → Schedule (1:N)
+  models.User.hasMany(models.Schedule, {
+    foreignKey: "userId",
+    as: "schedules",
+  });
+  models.Schedule.belongsTo(models.User, {
+    foreignKey: "userId",
+    as: "user",
+  });
+
+  // 🔹 ProposalEmail → Schedule (1:N via parentId)
+  models.ProposalEmail.hasMany(models.Schedule, {
+    foreignKey: "parentId",
+    sourceKey: "parentId",
+    as: "schedules",
+    constraints: false,
+  });
+  models.Schedule.belongsTo(models.ProposalEmail, {
+    foreignKey: "parentId",
+    targetKey: "parentId",
+    as: "proposalEmail",
+    constraints: false,
+  });
 };
 
 module.exports = defineAssociations;
