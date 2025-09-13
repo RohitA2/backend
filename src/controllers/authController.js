@@ -39,10 +39,10 @@ exports.register = async (req, res) => {
 
       return res.status(400).json({ message: "Email already exists" });
     }
-    // const saltRounds = 10;
-    // const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
 
-    // userData.password = hashedPassword;
+    userData.password = hashedPassword;
 
     const newUser = await userService.create(db.models.User, userData);
 
@@ -100,7 +100,7 @@ exports.password = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   // console.log("email is", email);
-  
+
   try {
     const user = await userService.checkExist(db.models.User, { email: email });
     if (!user.success) {
@@ -200,12 +200,10 @@ exports.forgotPassword = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res
-      .status(500)
-      .json({
-        message:
-          "An error occurred while processing your request. Please try again later.",
-      });
+    res.status(500).json({
+      message:
+        "An error occurred while processing your request. Please try again later.",
+    });
   }
 };
 
@@ -435,12 +433,10 @@ exports.updateUser = async (req, res) => {
     }
 
     if (Object.keys(validData).length === 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "No valid fields provided to update",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided to update",
+      });
     }
 
     // Use the update service
@@ -568,4 +564,3 @@ exports.moreDetails = async (req, res) => {
     });
   }
 };
-
