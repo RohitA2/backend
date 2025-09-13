@@ -92,7 +92,9 @@ exports.scheduleByUserId = async (req, res) => {
 
     if (!schedules || schedules.length === 0) {
       await t.rollback();
-      return res.status(404).json({ error: "No schedules found" });
+      return res
+        .status(400)
+        .json({ message: "No schedules found", error: "No schedules found" });
     }
 
     // Step 2: Extract parentIds from schedules
@@ -123,5 +125,3 @@ exports.scheduleByUserId = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-
