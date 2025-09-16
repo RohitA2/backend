@@ -19,7 +19,7 @@ exports.sendProposalEmail = async (req, res) => {
       parentId
     );
 
-    if (!headerId || !userId || !name || !from || !to || !link || !parentId) {
+    if (!userId || !name || !from || !to || !link || !parentId) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 

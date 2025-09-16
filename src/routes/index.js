@@ -18,6 +18,10 @@ const parentsRoutes = require("./parentsRoutes");
 const textRoutes = require("./TextRoutes");
 const termsRoutes = require("./TermsRoutes");
 const VerifyToken = require("./VerifyToken");
+const pricingRoutes = require("./pricingServiceRoutes");
+const coverBlockRoutes = require("./coverRoutes");
+
+
 
 module.exports = (app) => {
   // Authentication routes for all roles
@@ -40,4 +44,6 @@ module.exports = (app) => {
   app.use("/text", textRoutes);
   app.use("/terms", termsRoutes);
   app.use("/verify", VerifyToken);
+  app.use("/pricing", pricingRoutes);
+  app.use("/cover", coverBlockRoutes);
 };
