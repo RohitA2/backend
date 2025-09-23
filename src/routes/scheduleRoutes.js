@@ -7,7 +7,7 @@ const {
   deleteSchedule,
   getScheduleByBlockId,
   scheduleByUserId,
-  getProposalsByUserId 
+  getProposalsByUserId,
 } = require("../controllers/scheduleController");
 
 const router = express.Router();
