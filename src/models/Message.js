@@ -1,54 +1,53 @@
-const { sequelize } = require("../config/database"); // Correct path to sequelize instance
+const { sequelize } = require("../config/database");
 const { DataTypes } = require("sequelize");
 
 const Message = sequelize.define(
-  'Message',
+  "Message",
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    senderId: {
-      type: DataTypes.INTEGER,
-      allowNull: true, // User or Agent ID
+
+    sid: {
+      type: DataTypes.STRING, // Twilio Message SID
+      allowNull: true,
     },
 
-    groupId: {
-      type: DataTypes.INTEGER,
-      allowNull: false, 
-      references: {
-        model: 'Groups',
-        key: 'id',
-      },
+    from: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
-    content: {
+
+    to: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+
+    body: {
       type: DataTypes.TEXT,
-      allowNull: true, 
+      allowNull: false,
     },
-    messageType: {
-      type: DataTypes.STRING,
-      defaultValue: 'text',
+
+    direction: {
+      type: DataTypes.ENUM("outbound", "inbound"),
+      allowNull: false,
     },
-    attachments: {
-      type: DataTypes.JSON, 
+
+    status: {
+      type: DataTypes.STRING, // queued, sent, delivered, failed, received
       allowNull: true,
     },
-    isRead: {
-      type: DataTypes.BOOLEAN, 
-      defaultValue: false,
-    },
-    message:{
-      type: DataTypes.STRING,
+
+    errorMessage: {
+      type: DataTypes.TEXT,
       allowNull: true,
-    },readBy: {
-      type: DataTypes.JSON, // Storing readBy as a JSON field (array of userIds)
-      defaultValue: [],
     },
   },
   {
-    tableName: 'Messages',
-    timestamps: true,
+    tableName: "messages",
+    timestamps: true, 
   }
 );
 

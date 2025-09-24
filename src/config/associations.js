@@ -129,6 +129,17 @@ const defineAssociations = () => {
     as: "proposalEmail",
     constraints: false,
   });
+
+  models.ProposalEmailRecipient.belongsTo(models.Recipient, {
+    foreignKey: "recipientId",
+    as: "recipientDetails",
+  });
+
+  // Recipient.js
+  models.Recipient.hasMany(models.ProposalEmailRecipient, {
+    foreignKey: "recipientId",
+    as: "proposalRecipients",
+  });
 };
 
 module.exports = defineAssociations;

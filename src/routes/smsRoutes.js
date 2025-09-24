@@ -8,4 +8,7 @@ router.post("/send", smsController.sendSMS);
 // Receive SMS webhook
 router.post("/incoming", smsController.receiveSMS);
 
+
+router.get("/list", smsController.allMessages);
+
 module.exports = router;

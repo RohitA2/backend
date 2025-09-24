@@ -129,7 +129,6 @@ exports.scheduleByUserId = async (req, res) => {
 exports.getProposalsByUserId = async (req, res) => {
   try {
     const { id } = req.params;
-    // console.log("➡️ Fetching proposals for userId:", id);
 
     const userWithProposals = await db.models.User.findOne({
       where: { id },
@@ -138,7 +137,17 @@ exports.getProposalsByUserId = async (req, res) => {
           model: db.models.ProposalEmail,
           as: "proposalEmails",
           include: [
-            { model: db.models.ProposalEmailRecipient, as: "recipients" },
+            {
+              model: db.models.ProposalEmailRecipient,
+              as: "recipients",
+              include: [
+                {
+                  model: db.models.Recipient,
+                  as: "recipientDetails", // include full recipient info
+                  attributes: ["id", "name", "phone"],
+                },
+              ],
+            },
             { model: db.models.Schedule, as: "schedules" },
             { model: db.models.Signature, as: "signatures" },
           ],
@@ -156,10 +165,10 @@ exports.getProposalsByUserId = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    // 🔹 Group proposals by parentId
+    // Group proposals by parentId
     const grouped = {};
     userWithProposals.proposalEmails.forEach((proposal) => {
-      const parentId = proposal.parentId || proposal.id; // fallback if null
+      const parentId = proposal.parentId || proposal.id;
 
       if (!grouped[parentId]) {
         grouped[parentId] = {
@@ -181,14 +190,20 @@ exports.getProposalsByUserId = async (req, res) => {
       });
 
       if (proposal.recipients)
-        grouped[parentId].recipients.push(...proposal.recipients);
+        grouped[parentId].recipients.push(
+          ...proposal.recipients.map((r) => ({
+            ...r.toJSON(),
+            recipientDetails: r.recipientDetails || null,
+          }))
+        );
+
       if (proposal.schedules)
         grouped[parentId].schedules.push(...proposal.schedules);
+
       if (proposal.signatures)
         grouped[parentId].signatures.push(...proposal.signatures);
     });
 
-    // ✅ Response
     res.json({
       success: true,
       user: {
@@ -210,3 +225,4 @@ exports.getProposalsByUserId = async (req, res) => {
     });
   }
 };
+
