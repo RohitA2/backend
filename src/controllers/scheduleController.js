@@ -100,9 +100,33 @@ exports.scheduleByUserId = async (req, res) => {
     // Step 2: Extract parentIds from schedules
     const parentIds = schedules.map((s) => s.parentId).filter(Boolean);
 
-    // Step 3: Fetch proposals linked via parentId
+    if (parentIds.length === 0) {
+      await t.commit();
+      return res.json({ 
+        success: true, 
+        data: schedules.map(s => ({ ...s.toJSON(), proposalEmail: null })) 
+      });
+    }
+
+    // Step 3: Fetch proposals with recipients and user details
     const proposalEmails = await db.models.ProposalEmail.findAll({
       where: { parentId: parentIds },
+      include: [
+        {
+          model: db.models.ProposalEmailRecipient,
+          as: 'recipients',
+          include: [
+            {
+              model: db.models.Recipient,
+              as: 'recipientDetails'
+            }
+          ]
+        },
+        {
+          model: db.models.User,
+          as: 'user'
+        }
+      ],
       transaction: t,
     });
 

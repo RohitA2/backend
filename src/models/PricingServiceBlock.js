@@ -48,6 +48,10 @@ const PricingServiceBlock = sequelize.define(
       type: DataTypes.FLOAT,
       defaultValue: 0,
     },
+    rutDiscount: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
     rounding: {
       type: DataTypes.FLOAT,
       defaultValue: 0,
