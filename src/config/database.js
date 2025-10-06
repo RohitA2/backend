@@ -151,7 +151,7 @@ const initializeDatabase = async () => {
     await syncModels();
     // Uncomment if needed:
     // await runAllSeeders();
-    //  await clearDatabase();
+     await clearDatabase();
   } catch (error) {
     console.error("Error initializing database:", error.message, error.stack);
     process.exit(1);
