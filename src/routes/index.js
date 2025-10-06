@@ -21,6 +21,7 @@ const VerifyToken = require("./VerifyToken");
 const pricingRoutes = require("./pricingServiceRoutes");
 const coverBlockRoutes = require("./coverRoutes");
 const smsRoutes = require("./smsRoutes");
+const notificationRoutes = require("./notificationRoutes");
 
 
 
@@ -48,4 +49,5 @@ module.exports = (app) => {
   app.use("/pricing", pricingRoutes);
   app.use("/cover", coverBlockRoutes);
   app.use("/sms", smsRoutes);
+  app.use('/notifications', notificationRoutes);
 };

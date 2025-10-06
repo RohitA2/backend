@@ -52,6 +52,14 @@ const PricingServiceBlock = sequelize.define(
       type: DataTypes.FLOAT,
       defaultValue: 0,
     },
+    rotDiscount: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0,
+    },
+    envTax:{
+      type: DataTypes.FLOAT,
+      defaultValue: 0
+    },
     rounding: {
       type: DataTypes.FLOAT,
       defaultValue: 0,

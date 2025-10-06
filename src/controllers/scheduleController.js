@@ -83,6 +83,7 @@ exports.scheduleByUserId = async (req, res) => {
   const t = await db.sequelize.transaction();
   try {
     const { id } = req.params;
+    console.log("🔎 Request received for userId:", id);
 
     // Step 1: Get all schedules for this user
     const schedules = await db.models.Schedule.findAll({
@@ -90,65 +91,120 @@ exports.scheduleByUserId = async (req, res) => {
       transaction: t,
     });
 
+    console.log("📅 Schedules found:", schedules.length);
+
     if (!schedules || schedules.length === 0) {
       await t.rollback();
-      return res
-        .status(400)
-        .json({ message: "No schedules found", error: "No schedules found" });
+      return res.status(404).json({ message: "No schedules found for this user" });
     }
 
     // Step 2: Extract parentIds from schedules
     const parentIds = schedules.map((s) => s.parentId).filter(Boolean);
+    console.log("📌 Extracted parentIds:", parentIds);
 
     if (parentIds.length === 0) {
       await t.commit();
-      return res.json({ 
-        success: true, 
-        data: schedules.map(s => ({ ...s.toJSON(), proposalEmail: null })) 
+      return res.json({
+        success: true,
+        message: "No parentIds found in schedules",
+        data: [],
       });
     }
 
-    // Step 3: Fetch proposals with recipients and user details
+    // Step 3: Get all signatures with method sign or decline
+    const validSignatures = await db.models.Signature.findAll({
+      where: {
+        parentId: parentIds,
+        method: ["type", "decline"],
+      },
+      transaction: t,
+    });
+
+    console.log("✍️ Signatures found (sign/decline):", validSignatures.length);
+
+    if (!validSignatures || validSignatures.length === 0) {
+      await t.commit();
+      return res.json({
+        success: true,
+        message: "No valid signatures found with method sign or decline",
+        data: [],
+      });
+    }
+
+    // Extract parentIds from valid signatures
+    const validParentIds = [...new Set(validSignatures.map((sig) => sig.parentId))];
+    console.log("✅ Valid parentIds from signatures:", validParentIds);
+
+    if (validParentIds.length === 0) {
+      await t.commit();
+      return res.json({
+        success: true,
+        message: "No valid parentIds found from signatures",
+        data: [],
+      });
+    }
+
+    // Step 4: Fetch proposals for valid parentIds
     const proposalEmails = await db.models.ProposalEmail.findAll({
-      where: { parentId: parentIds },
+      where: { parentId: validParentIds },
       include: [
         {
           model: db.models.ProposalEmailRecipient,
-          as: 'recipients',
+          as: "recipients",
           include: [
             {
               model: db.models.Recipient,
-              as: 'recipientDetails'
-            }
-          ]
+              as: "recipientDetails",
+            },
+          ],
         },
         {
           model: db.models.User,
-          as: 'user'
-        }
+          as: "user",
+        },
       ],
       transaction: t,
     });
 
+    console.log("📨 ProposalEmails found:", proposalEmails.length);
+
     await t.commit();
 
-    // Step 4: Attach proposal details to schedules
-    const combined = schedules.map((schedule) => {
-      const proposal = proposalEmails.find(
-        (p) => p.parentId === schedule.parentId
-      );
-      return {
-        ...schedule.toJSON(),
-        proposalEmail: proposal ? proposal.toJSON() : null,
-      };
-    });
+    if (!proposalEmails || proposalEmails.length === 0) {
+      return res.json({
+        success: true,
+        message: "No proposals found for valid parentIds",
+        data: [],
+      });
+    }
 
-    res.json({ success: true, data: combined });
+    // Step 5: Combine schedules with matching proposals
+    const combined = schedules
+      .filter((schedule) => validParentIds.includes(schedule.parentId))
+      .map((schedule) => {
+        const proposal = proposalEmails.find(
+          (p) => p.parentId === schedule.parentId
+        );
+        return {
+          ...schedule.toJSON(),
+          proposalEmail: proposal ? proposal.toJSON() : null,
+        };
+      });
+
+    console.log("📦 Final combined records:", combined.length);
+
+    return res.json({
+      success: true,
+      message: "Filtered schedules with sign/decline signatures",
+      data: combined,
+    });
   } catch (error) {
+    console.error("❌ Error in scheduleByUserId:", error);
     await t.rollback();
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
+
 
 exports.getProposalsByUserId = async (req, res) => {
   try {
@@ -167,18 +223,32 @@ exports.getProposalsByUserId = async (req, res) => {
               include: [
                 {
                   model: db.models.Recipient,
-                  as: "recipientDetails", // include full recipient info
+                  as: "recipientDetails",
                   attributes: ["id", "name", "phone"],
                 },
               ],
             },
-            { model: db.models.Schedule, as: "schedules" },
-            { model: db.models.Signature, as: "signatures" },
+            {
+              model: db.models.Schedule,
+              as: "schedules",
+              separate: true, // ensures proper sorting inside include
+              order: [["createdAt", "DESC"]],
+            },
+            {
+              model: db.models.Signature,
+              as: "signatures",
+              separate: true,
+              order: [["createdAt", "DESC"]],
+            },
           ],
+          separate: true,
+          order: [["createdAt", "DESC"]],
         },
         {
           model: db.models.Schedule,
-          as: "schedules", // user-level schedules
+          as: "schedules",
+          separate: true,
+          order: [["createdAt", "DESC"]],
         },
       ],
     });
@@ -211,6 +281,7 @@ exports.getProposalsByUserId = async (req, res) => {
         fromEmail: proposal.fromEmail,
         expirationDate: proposal.expirationDate,
         link: proposal.link,
+        createdAt: proposal.createdAt,
       });
 
       if (proposal.recipients)
@@ -228,6 +299,27 @@ exports.getProposalsByUserId = async (req, res) => {
         grouped[parentId].signatures.push(...proposal.signatures);
     });
 
+    // ✅ Sort proposals by createdAt DESC before sending
+    const sortedGroupedProposals = Object.values(grouped).map((grp) => ({
+      ...grp,
+      proposals: grp.proposals.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      ),
+      schedules: grp.schedules.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      ),
+      signatures: grp.signatures.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      ),
+    }));
+
+    // ✅ Sort parent groups themselves by most recent proposal
+    sortedGroupedProposals.sort((a, b) => {
+      const aDate = a.proposals[0]?.createdAt || 0;
+      const bDate = b.proposals[0]?.createdAt || 0;
+      return new Date(bDate) - new Date(aDate);
+    });
+
     res.json({
       success: true,
       user: {
@@ -237,8 +329,11 @@ exports.getProposalsByUserId = async (req, res) => {
         email: userWithProposals.email,
         companyName: userWithProposals.companyName,
       },
-      groupedProposals: Object.values(grouped),
-      userSchedules: userWithProposals.schedules || [],
+      groupedProposals: sortedGroupedProposals,
+      userSchedules:
+        (userWithProposals.schedules || []).sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        ),
     });
   } catch (error) {
     console.error("❌ Error fetching proposals:", error);
@@ -249,4 +344,5 @@ exports.getProposalsByUserId = async (req, res) => {
     });
   }
 };
+
 

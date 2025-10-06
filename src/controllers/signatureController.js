@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require("uuid");
 exports.createSignature = async (req, res) => {
   try {
     const { blockId, parentId } = req.body;
-    // console.log(" i am from signature blockId:", blockId, parentId);
+    console.log(" i am from signature blockId:", blockId, parentId);
 
     if (!blockId) {
       return res.status(400).json({ error: "blockId is required" });
@@ -46,14 +46,14 @@ exports.updateSignatureStatus = async (req, res) => {
     } = req.body;
     const { id: blockId } = req.params; // blockId passed in URL
 
-    // console.log("i ma from signature controller :", req.body);
+    console.log("i ma from signature controller :", req.body);
 
     // 1️⃣ Find signature record by blockId
     const signatureRecord = await db.models.Signature.findOne({
       where: { blockId },
     });
 
-    // console.log("signatureRecord:", signatureRecord);
+    console.log("signatureRecord:", signatureRecord);
 
     if (!signatureRecord) {
       return res.status(404).json({ error: "Signature record not found" });
@@ -139,7 +139,7 @@ exports.updateSignatureStatus = async (req, res) => {
 exports.getSignatureByBlockId = async (req, res) => {
   try {
     const { id } = req.params;
-    // console.log(" i am from signatureId:", id);
+    console.log(" i am from signatureId:", id);
 
     const signature = await db.models.Signature.findOne({
       where: { blockId: id },

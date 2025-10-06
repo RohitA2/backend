@@ -15,10 +15,12 @@ exports.createBlock = async (req, res) => {
       pricingType,
       netTotal,
       vat,
-      rutDiscount,  
+      rutDiscount,
       rounding,
       total,
       items,
+      envTax,
+      rotDiscount,
     } = req.body;
 
     // 1. Check if block already exists
@@ -41,6 +43,8 @@ exports.createBlock = async (req, res) => {
           rutDiscount,
           rounding,
           total,
+          envTax,
+          rotDiscount,
         },
         { transaction: t }
       );
@@ -79,6 +83,8 @@ exports.createBlock = async (req, res) => {
           rounding,
           total,
           items: items || [],
+          envTax,
+          rotDiscount,
         },
         {
           include: [{ model: db.models.PricingServiceItem, as: "items" }],

@@ -296,6 +296,8 @@ exports.logout = (req, res) => {
 // Update user profile
 exports.updateProfile = async (req, res) => {
   const userData = req.body;
+  // console.log("User Data:++++++++++++++++++++++++++++", userData);
+
   try {
     const user = await userService.checkExist(db.models.User, req.user.id);
 
@@ -303,7 +305,12 @@ exports.updateProfile = async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
-    // Update the user's password after successful OTP verification
+    // ✅ Hash the password if it exists in the request body
+    if (userData.password) {
+      const salt = await bcrypt.genSalt(10);
+      userData.password = await bcrypt.hash(userData.password, salt);
+    }
+
     const update = await userService.update(
       db.models.User,
       user.data.id,
@@ -311,10 +318,13 @@ exports.updateProfile = async (req, res) => {
     );
 
     if (!update.success) {
-      return res.status(400).json(update); // If password update fails
+      return res.status(400).json(update);
     }
 
-    res.status(200).json({ message: "Profile updated successfully", update });
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: update.data, // ✅ Send updated user data
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error updating profile" });
