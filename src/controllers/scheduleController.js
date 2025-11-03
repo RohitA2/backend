@@ -1,29 +1,54 @@
 // Create schedule
-const e = require("cors");
 const db = require("../config/database");
+const nodemailer = require("nodemailer");
+const { createNotification } = require("../utils/notify");
+const { Op } = require("sequelize");
 exports.createSchedule = async (req, res) => {
   try {
-    const { date, time, userId, blockId, parentId } = req.body;
-    // console.log(" i am from blockId:", blockId);
+    const { schedules } = req.body;
 
-    if (!date || !time || !userId) {
-      return res.status(400).json({ error: "Date and time are required" });
+    if (!Array.isArray(schedules) || schedules.length === 0) {
+      return res.status(400).json({ error: "Schedules array is required" });
     }
 
-    const newSchedule = await db.models.Schedule.create({
-      date,
-      time,
-      userId,
-      blockId,
-      parentId,
-    });
-    res.status(201).json({
-      message: "Schedule saved successfully",
-      success: true,
-      id: newSchedule.id,
-      data: newSchedule,
-    });
+    const validSchedules = schedules.filter(
+      (s) => s.date && s.time && s.userId
+    );
+    if (validSchedules.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "At least one schedule with date, time, and userId is required" });
+    }
+
+    const transaction = await db.sequelize.transaction();
+    try {
+      const createdSchedules = await db.models.Schedule.bulkCreate(
+        validSchedules.map((s) => ({
+          date: s.date,
+          time: s.time,
+          comment: s.comment || null, // Allow null if no comment provided
+          userId: s.userId,
+          blockId: s.blockId,
+          parentId: s.parentId,
+        })),
+        { transaction }
+      );
+
+      await transaction.commit();
+
+      const scheduleIds = createdSchedules.map((s) => s.id);
+      res.status(201).json({
+        message: "Schedules saved successfully",
+        success: true,
+        id: scheduleIds, // Return array of IDs
+        data: createdSchedules,
+      });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
   } catch (err) {
+    console.error("Error creating schedules:", err.message);
     res.status(500).json({ error: err.message });
   }
 };
@@ -56,6 +81,7 @@ exports.getScheduleById = async (req, res) => {
 exports.getScheduleByBlockId = async (req, res) => {
   try {
     const { id } = req.params;
+    console.log("🔎 Request received for blockId:", id);
     const schedule = await db.models.Schedule.findAll({
       where: { blockId: id },
     });
@@ -79,6 +105,135 @@ exports.deleteSchedule = async (req, res) => {
   }
 };
 
+exports.updateSchedule = async (req, res) => {
+  const { scheduleId, date, time, comment, description, location } = req.body;
+  console.log("📩 Incoming update request:", req.body);
+
+  try {
+    // Validate required fields
+    if (!scheduleId || !date || !time) {
+      return res.status(400).json({
+        success: false,
+        error: "Schedule ID, date, and time are required.",
+      });
+    }
+
+    // Validate date and time formats
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ success: false, error: "Invalid date format. Use YYYY-MM-DD." });
+    }
+    if (!/^\d{2}:\d{2}:\d{2}$/.test(time)) {
+      return res.status(400).json({ success: false, error: "Invalid time format. Use HH:mm:ss." });
+    }
+
+    // Find the schedule
+    const schedule = await db.models.Schedule.findByPk(scheduleId);
+    if (!schedule) return res.status(404).json({ success: false, error: "Schedule not found." });
+
+    const parentId = schedule.parentId;
+    if (!parentId) return res.status(400).json({ success: false, error: "Parent ID not found for this schedule." });
+
+    // Update the schedule
+    await schedule.update({ date, time, comment: comment || null, description: description || null, location: location || null });
+    console.log(`✅ Schedule #${scheduleId} updated successfully.`);
+
+    // Immediate API response
+    res.json({
+      success: true,
+      message: "Schedule updated successfully. Notifications and emails are being processed in the background.",
+      schedule,
+    });
+
+    // 🔹 Background tasks: Emails + Notifications
+    (async () => {
+      try {
+        const proposalEmail = await db.models.ProposalEmail.findOne({ where: { parentId } });
+        if (!proposalEmail) {
+          console.log("⚠️ No proposal email found for parentId:", parentId);
+          return;
+        }
+
+        const recipients = await db.models.ProposalEmailRecipient.findAll({ where: { proposalEmailId: proposalEmail.id } });
+        if (!recipients.length) {
+          console.log("⚠️ No recipients found for this proposal.");
+          return;
+        }
+
+        console.log(`📨 Sending notifications and emails to ${recipients.length} recipients in background...`);
+
+        // Nodemailer setup
+        const transporter = nodemailer.createTransport({
+          host: "smtp.gmail.com",
+          port: 587,
+          secure: false,
+          auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+        });
+
+        // Email template
+        const emailTemplate = (recipient) => `
+          <div style="font-family: Arial,sans-serif; padding: 20px; background: #f4f6f8;">
+            <div style="max-width:600px;margin:auto;background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.1);padding:25px;">
+              <h2 style="color:#2c3e50;text-align:center;">📅 Schedule Update Notification</h2>
+              <p>Dear <b>${recipient.recipientName || "Recipient"}</b>,</p>
+              <p>The schedule for the proposal <b>${proposalEmail.proposalName}</b> has been updated:</p>
+              <table style="width:100%;border-collapse:collapse;margin:15px 0;">
+                <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Date:</b></td><td>${date}</td></tr>
+                <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Time:</b></td><td>${time}</td></tr>
+                ${location ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Location:</b></td><td>${location}</td></tr>` : ""}
+                ${comment ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Comment:</b></td><td>${comment}</td></tr>` : ""}
+                ${description ? `<tr><td style="padding:8px;"><b>Description:</b></td><td>${description}</td></tr>` : ""}
+              </table>
+              <p style="text-align:center;margin:20px 0;">
+                <a href="${proposalEmail.link}" target="_blank" style="background:#007bff;color:white;padding:10px 18px;border-radius:5px;text-decoration:none;">View Proposal</a>
+              </p>
+              <p style="font-size:13px;color:#888;text-align:center;">Best regards,<br><b>${proposalEmail.fromName}</b></p>
+            </div>
+          </div>
+        `;
+
+        for (const recipient of recipients) {
+          // Send email
+          try {
+            await transporter.sendMail({
+              from: `"${proposalEmail.fromName}" <${proposalEmail.fromEmail}>`,
+              to: recipient.recipientEmail,
+              subject: `🗓️ Schedule Updated: ${proposalEmail.proposalName}`,
+              html: emailTemplate(recipient),
+            });
+            console.log(`📧 Email sent to ${recipient.recipientEmail}`);
+          } catch (err) {
+            console.error(`❌ Failed to send email to ${recipient.recipientEmail}:`, err.message);
+          }
+
+          // Create in-app notification
+          try {
+            await createNotification({
+              title: "Schedule Updated",
+              message: `The schedule for proposal "${proposalEmail.proposalName}" has been updated.`,
+              type: "info",
+              userId: recipient.recipientId,
+            });
+            console.log(`🔔 Notification created for user ${recipient.recipientId}`);
+          } catch (err) {
+            console.error(`❌ Failed to create notification for user ${recipient.recipientId}:`, err.message);
+          }
+        }
+
+        console.log("✅ Background emails and notifications task completed.");
+      } catch (err) {
+        console.error("💥 Error in background task:", err);
+      }
+    })();
+
+  } catch (error) {
+    console.error("💥 Error updating schedule:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error. Please try again later.",
+    });
+  }
+};
+
 exports.scheduleByUserId = async (req, res) => {
   const t = await db.sequelize.transaction();
   try {
@@ -90,7 +245,7 @@ exports.scheduleByUserId = async (req, res) => {
       where: { userId: id },
       transaction: t,
     });
-
+    console.log("📅 Schedules found:", schedules);
     console.log("📅 Schedules found:", schedules.length);
 
     if (!schedules || schedules.length === 0) {
@@ -162,6 +317,7 @@ exports.scheduleByUserId = async (req, res) => {
           model: db.models.User,
           as: "user",
         },
+
       ],
       transaction: t,
     });
@@ -204,6 +360,109 @@ exports.scheduleByUserId = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+
+// exports.scheduleByUserId = async (req, res) => {
+//   const t = await db.sequelize.transaction();
+//   try {
+//     const { id } = req.params;
+//     console.log("🔎 Request received for userId:", id);
+
+//     // Step 1: Fetch all schedules
+//     const schedules = await db.models.Schedule.findAll({
+//       where: { userId: id },
+//       transaction: t,
+//     });
+
+//     if (!schedules.length) {
+//       await t.rollback();
+//       return res.status(404).json({ message: "No schedules found for this user" });
+//     }
+
+//     // Step 2: Extract parentIds
+//     const parentIds = schedules.map((s) => s.parentId).filter(Boolean);
+
+//     if (!parentIds.length) {
+//       await t.commit();
+//       return res.json({
+//         success: true,
+//         message: "No parentIds found in schedules",
+//         data: [],
+//       });
+//     }
+
+//     // Step 3: Fetch valid signatures (sign/decline)
+//     const validSignatures = await db.models.Signature.findAll({
+//       where: {
+//         parentId: parentIds,
+//         method: ["type", "decline"],
+//       },
+//       transaction: t,
+//     });
+
+//     const validParentIds = [...new Set(validSignatures.map((s) => s.parentId))];
+
+//     if (!validParentIds.length) {
+//       await t.commit();
+//       return res.json({
+//         success: true,
+//         message: "No valid parentIds found from signatures",
+//         data: [],
+//       });
+//     }
+
+//     // Step 4: Fetch proposals
+//     const proposalEmails = await db.models.ProposalEmail.findAll({
+//       where: { parentId: validParentIds },
+//       include: [
+//         {
+//           model: db.models.ProposalEmailRecipient,
+//           as: "recipients",
+//           include: [
+//             {
+//               model: db.models.Recipient,
+//               as: "recipientDetails",
+//             },
+//           ],
+//         },
+//         {
+//           model: db.models.User,
+//           as: "user",
+//         },
+//       ],
+//       transaction: t,
+//     });
+
+//     await t.commit();
+
+//     // Step 5: Group data by parentId
+//     const groupedData = validParentIds.map((pid) => {
+//       const relatedSchedules = schedules
+//         .filter((s) => s.parentId === pid)
+//         .map((s) => s.toJSON());
+
+//       const proposal = proposalEmails.find((p) => p.parentId === pid);
+
+//       return {
+//         parentId: pid,
+//         proposalEmail: proposal ? proposal.toJSON() : null,
+//         schedules: relatedSchedules,
+//       };
+//     });
+
+//     console.log("📦 Final grouped result:", groupedData.length);
+
+//     return res.json({
+//       success: true,
+//       message: "Filtered schedules with sign/decline signatures",
+//       data: groupedData,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error in scheduleByUserId:", error);
+//     await t.rollback();
+//     return res.status(500).json({ error: error.message });
+//   }
+// };
 
 
 exports.getProposalsByUserId = async (req, res) => {

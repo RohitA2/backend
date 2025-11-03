@@ -52,14 +52,59 @@ router.post("/upload", upload.array("files", 10), async (req, res) => {
   }
 });
 
-
-
-// route to get all basis of blockid
 router.get("/data/:blockId", async (req, res) => {
   try {
     const { blockId } = req.params;
     const attachments = await db.models.Attachment.findAll({ where: { blockId } });
     res.json({ success: true, data: attachments });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+router.delete("/remove/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("Attachment ID for remove:", id);
+
+    const attachment = await db.models.Attachment.findByPk(id);
+
+    if (!attachment) {
+      return res.status(404).json({ success: false, message: "Attachment not found" });
+    }
+
+    const filePath = path.join(UPLOAD_DIR, attachment.filename);
+    if (fs.existsSync(filePath)) {
+      await fs.promises.unlink(filePath);
+    }
+
+    await attachment.destroy();
+
+    res.json({ success: true, message: "Attachment removed successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
+// In your attachments router file (e.g., attachments.js)
+router.patch("/update/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { displayName } = req.body;
+
+    const attachment = await db.models.Attachment.findByPk(id);
+    if (!attachment) {
+      return res.status(404).json({ success: false, message: "Attachment not found" });
+    }
+
+    attachment.displayName = displayName;
+    await attachment.save();
+    // console.log("Attachment updated successfully:", attachment);
+
+    res.json({ success: true, data: attachment });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: err.message });

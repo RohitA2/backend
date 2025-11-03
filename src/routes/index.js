@@ -22,11 +22,13 @@ const pricingRoutes = require("./pricingServiceRoutes");
 const coverBlockRoutes = require("./coverRoutes");
 const smsRoutes = require("./smsRoutes");
 const notificationRoutes = require("./notificationRoutes");
+const bankidRoutes = require('./bankidRoutes');
+const signicatRoutes = require('./signicat.routes');
 
 
 
 module.exports = (app) => {
-  // Authentication routes for all roles
+  // Authentication routes for all  
   app.use("/api/users", userRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api", uploadRoutes);
@@ -50,4 +52,6 @@ module.exports = (app) => {
   app.use("/cover", coverBlockRoutes);
   app.use("/sms", smsRoutes);
   app.use('/notifications', notificationRoutes);
+  // app.use('/api', bankidRoutes);
+  app.use("/api", signicatRoutes);
 };
