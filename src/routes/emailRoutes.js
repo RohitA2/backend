@@ -1,5 +1,5 @@
 const express = require("express");
-const { sendProposalEmail,updateExpirationDate } = require("../controllers/emailController");
+const { sendProposalEmail,updateExpirationDate, sendReminder } = require("../controllers/emailController");
 
 const router = express.Router();
 
@@ -8,6 +8,9 @@ router.post("/send-email", sendProposalEmail);
 
 
 router.post("/updateExpireDate", updateExpirationDate);
+
+
+router.post("/remind",sendReminder)
 
 
 

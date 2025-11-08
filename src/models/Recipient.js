@@ -1,4 +1,4 @@
-const { sequelize } = require("../config/database"); 
+const { sequelize } = require("../config/database");
 const { DataTypes } = require("sequelize");
 
 const Recipient = sequelize.define(
@@ -58,7 +58,7 @@ const Recipient = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    user_id:{
+    user_id: {
       type: DataTypes.INTEGER,
       allowNull: false
     },
@@ -66,9 +66,13 @@ const Recipient = sequelize.define(
       type: DataTypes.ENUM("Active", "Inactive"),
       defaultValue: "Active",
     },
-     parentId: {
+    parentId: {
       type: DataTypes.STRING, // Changed to STRING for flexibility
       allowNull: true,
+    },
+    fcmToken: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
   },
   {

@@ -9,6 +9,9 @@ const {
   updateSchedule,
   scheduleByUserId,
   getProposalsByUserId,
+  fcmToken,
+  fcmTokenForRecipent,
+  expiringProposals
 } = require("../controllers/scheduleController");
 
 
@@ -22,5 +25,8 @@ router.get("/sign/:id", getScheduleByBlockId);
 router.post("/updateSchedule", updateSchedule);
 router.get("/user/:id", scheduleByUserId);
 router.get("/manage/:id", getProposalsByUserId);
+router.post("/save-fcm-token",fcmToken)
+router.post("/save-fcm-token-recipent",fcmTokenForRecipent)
+router.get("/expiryDate/log", expiringProposals);
 
 module.exports = router;

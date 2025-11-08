@@ -140,6 +140,23 @@ const defineAssociations = () => {
     foreignKey: "recipientId",
     as: "proposalRecipients",
   });
+
+
+
+  models.ProposalEmail.hasMany(models.Recipient, {
+    foreignKey: "user_id",   // matches column in Recipient model
+    sourceKey: "userId",     // matches column in ProposalEmail model
+    as: "linkedRecipients",  // alias for include
+    constraints: false,
+  });
+
+  models.Recipient.belongsTo(models.ProposalEmail, {
+    foreignKey: "user_id",   // same foreign key
+    targetKey: "userId",     // match with ProposalEmail.userId
+    as: "proposalEmail",
+    constraints: false,
+  });
+
 };
 
 module.exports = defineAssociations;

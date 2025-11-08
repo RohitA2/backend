@@ -40,6 +40,10 @@ app.use((req, res, next) => {
   next();
 });
 
+
+require("./src/cron/proposalExpiryNotifier");
+
+
 // const userSockets = {};  // Track user socket connections
 
 // // When a user connects, store their socket ID

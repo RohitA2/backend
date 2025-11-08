@@ -78,6 +78,14 @@ const User = sequelize.define(
     companyName:{
       type:DataTypes.STRING,
       allowNull:true
+    },
+    fcmToken:{
+      type:DataTypes.STRING,
+      allowNull:true
+    },
+    platform:{
+      type:DataTypes.STRING,
+      allowNull:true
     }
   },
   {
