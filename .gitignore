@@ -3,3 +3,4 @@ node_modules
 .vscode
 .uploads
 src/serviceAccountKey.json
+src/serviceAccountKey.json
