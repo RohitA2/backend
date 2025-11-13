@@ -24,6 +24,7 @@ const smsRoutes = require("./smsRoutes");
 const notificationRoutes = require("./notificationRoutes");
 const bankidRoutes = require('./bankidRoutes');
 const signicatRoutes = require('./signicat.routes');
+const zignsecRoutes = require("./zignsecRoutes")
 
 
 
@@ -54,4 +55,5 @@ module.exports = (app) => {
   app.use('/notifications', notificationRoutes);
   // app.use('/api', bankidRoutes);
   app.use("/api", signicatRoutes);
+  app.use('/api/zignsec', zignsecRoutes);
 };

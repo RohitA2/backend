@@ -409,7 +409,7 @@ exports.sendProposalEmail = async (req, res) => {
                 </div>
                 <div style="border-top: 1px solid #dee2e6; padding-top: 15px;">
                     <p style="color: #999; margin: 0; font-size: 11px;">
-                        © ${new Date().getFullYear()} MyApp. All rights reserved.<br>
+                        © ${new Date().getFullYear()} SignLink. All rights reserved.<br>
                         This email was sent automatically. Please do not reply to this message.
                     </p>
                 </div>
@@ -676,7 +676,7 @@ exports.sendSignatureResponseEmail = async ({
                 </div>
                 <div style="border-top: 1px solid #dee2e6; padding-top: 15px;">
                     <p style="color: #999; margin: 0; font-size: 11px;">
-                        © ${new Date().getFullYear()} MyApp. All rights reserved.<br>
+                        © ${new Date().getFullYear()} SignLink. All rights reserved.<br>
                         This is an automated notification. Please do not reply to this email.
                     </p>
                 </div>
@@ -906,7 +906,7 @@ exports.updateExpirationDate = async (req, res) => {
                 </div>
                 <div style="border-top: 1px solid #dee2e6; padding-top: 15px;">
                     <p style="color: #999; margin: 0; font-size: 11px;">
-                        © ${new Date().getFullYear()} MyApp. All rights reserved.<br>
+                        © ${new Date().getFullYear()} SignLink. All rights reserved.<br>
                         This update was processed on ${new Date().toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'long',
@@ -949,7 +949,7 @@ exports.updateExpirationDate = async (req, res) => {
     console.error("Update expiration error:", err);
     res.status(500).json({ error: "Failed to update expiration date" });
   }
-};  
+};
 
 
 exports.sendReminder = async (req, res) => {
@@ -1137,7 +1137,7 @@ exports.sendReminder = async (req, res) => {
                 </div>
                 <div style="border-top: 1px solid #dee2e6; padding-top: 15px;">
                     <p style="color: #999; margin: 0; font-size: 11px;">
-                        © ${new Date().getFullYear()} MyApp. All rights reserved.<br>
+                        © ${new Date().getFullYear()} SignLink. All rights reserved.<br>
                         This email was sent automatically. Please do not reply to this message.
                     </p>
                 </div>
