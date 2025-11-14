@@ -8,7 +8,7 @@ exports.uploadFile = (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const fileUrl = `${process.env.BASE_URL || "http://13.62.210.204"}/api/uploads/${
+  const fileUrl = `${process.env.BASE_URL || "https://signlink.se"}/api/uploads/${
     req.file.filename
   }`;
 
