@@ -94,8 +94,9 @@ exports.receiveSMS = async (req, res) => {
 
     const from = req.body.From;
     const to = req.body.To;
-    const body = req.body.Body;
-    const sid = req.body.MessageSid;
+    const body = req.body.Body || req.body.body;
+    const sid = req.body.MessageSid || req.body.Sid;
+
 
     console.log(`📩 Incoming SMS:
       From: ${from}
