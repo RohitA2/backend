@@ -18,6 +18,9 @@ exports.sendSMS = async (req, res) => {
       .json({ success: false, error: "To and message are required" });
   }
 
+  console.log("i am from twilio body", req.body);
+  
+  
   try {
     const msg = await client.messages.create({
       body: message,

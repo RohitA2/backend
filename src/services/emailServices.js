@@ -32,7 +32,7 @@ const sendEmailOTP = async (to, subject, text, replacements, html) => {
   htmlTemplate = htmlTemplate.replace('{{companyAddress}}', companyAddress);
 
   const mailOptions = {
-    from: `"${process.env.PROJECT_NAME}" <${process.env.EMAIL_USER}>`, // Customize From field
+    from: `"SignLink Support" <${process.env.EMAIL_USER}>`, // Customize From field
     to,
     subject,
     text,
@@ -91,7 +91,7 @@ const sendNewsletterEmail = async (subscribers, subject, content) => {
 
   try {
     // Sending email to each subscriber in the list
-    const emailPromises = subscribers.map(subscriber => 
+    const emailPromises = subscribers.map(subscriber =>
       transporter.sendMail({ ...mailOptions, to: subscriber.email })
     );
 
@@ -102,8 +102,12 @@ const sendNewsletterEmail = async (subscribers, subject, content) => {
   }
 };
 
+
+
+
 module.exports = {
   sendResetEmailOTP,
   sendEmailOTP,
   sendNewsletterEmail,  // Export the new sendNewsletterEmail function
+  transporter
 };

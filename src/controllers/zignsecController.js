@@ -100,13 +100,13 @@ exports.createSession = async (req, res) => {
         } = req.body;
 
 
-        console.log("i am from body", req.body);
+        // console.log("i am from body", req.body);
 
         if (!req.file) {
             return res.status(400).json({ error: "File is required" });
         }
 
-        console.log("i am from the file ", req.file);
+        // console.log("i am from the file ", req.file);
 
 
         const formData = new FormData();
@@ -120,7 +120,7 @@ exports.createSession = async (req, res) => {
         formData.append("signatureId", signatureId);
         formData.append("blockId", blockId);
 
-        console.log("i am session Url",ZIGNSEC_API_URL);
+        // console.log("i am session Url",ZIGNSEC_API_URL);
         
 
         const response = await axios.post(`${ZIGNSEC_API_URL}/sessions`, formData, {

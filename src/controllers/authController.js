@@ -2,6 +2,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
+const crypto = require("crypto");
 const db = require("../config/database"); // Correct path to sequelize instance
 const emailService = require("../services/emailServices");
 const userService = require("../services/myServices"); // Refactored to use your services
@@ -9,8 +10,10 @@ const otpService = require("../services/otpServices");
 const moment = require("moment-timezone");
 const { use } = require("../routes/uploadRoutes");
 const myServices = require("../services/myServices");
+const Sequelize = require("sequelize");
+const { Op } = Sequelize;
 
-dotenv.config();
+
 
 // Register new user
 exports.register = async (req, res) => {
@@ -419,160 +422,618 @@ const sendVerificationOtp = async (newUser, type) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+exports.forgotPassword = async (req, res) => {
   try {
-    const { id } = req.user;
-    const updateData = req.body;
+    const { email } = req.body;
 
-    // Validate the required fields in `updateData` if necessary
-    const allowedFields = [
-      "relationship_intentions",
-      "residence",
-      "image",
-      "marriageReadiness",
-      "location",
-      "dob",
-    ];
+    const user = await db.models.User.findOne({ where: { email } });
 
-    // Filter out any unexpected fields from the updateData
-    const validData = {};
-    for (const field of allowedFields) {
-      if (field in updateData) {
-        validData[field] = updateData[field];
-      }
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Email not found" });
     }
 
-    if (Object.keys(validData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No valid fields provided to update",
-      });
-    }
+    // Generate token
+    const resetToken = crypto.randomBytes(32).toString("hex");
 
-    // Use the update service
-    const response = await userService.update(db.models.User, id, validData);
+    user.resetToken = resetToken;
+    user.resetTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 mins
+    await user.save();
 
-    if (!response.success) {
-      return res.status(400).json(response);
-    }
-
-    res.status(200).json({
-      success: true,
-      message: response.message,
-      data: response.data,
+    const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    // Send Email
+    await emailService.transporter.sendMail({
+      from: `"SignLink Support" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: "Reset Your SignLink Password",
+      html: `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset - SignLink</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+            
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background-color: #f8fafc;
+                margin: 0;
+                padding: 0;
+            }
+            
+            .email-container {
+                max-width: 600px;
+                margin: 0 auto;
+                background: #ffffff;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            }
+            
+            .email-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 40px 30px;
+                text-align: center;
+                color: white;
+            }
+            
+            .logo {
+                font-size: 28px;
+                font-weight: 700;
+                margin-bottom: 10px;
+                letter-spacing: -0.5px;
+            }
+            
+            .email-title {
+                font-size: 24px;
+                font-weight: 600;
+                margin-bottom: 8px;
+            }
+            
+            .email-subtitle {
+                font-size: 16px;
+                font-weight: 400;
+                opacity: 0.9;
+            }
+            
+            .email-body {
+                padding: 40px 30px;
+                color: #374151;
+            }
+            
+            .greeting {
+                font-size: 16px;
+                line-height: 1.6;
+                margin-bottom: 24px;
+                color: #6b7280;
+            }
+            
+            .reset-instruction {
+                font-size: 15px;
+                line-height: 1.6;
+                margin-bottom: 32px;
+                color: #4b5563;
+            }
+            
+            .reset-button {
+                display: inline-block;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                text-decoration: none;
+                padding: 16px 32px;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 16px;
+                text-align: center;
+                margin: 20px 0;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            }
+            
+            .reset-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            }
+            
+            .reset-link {
+                word-break: break-all;
+                background: #f8fafc;
+                padding: 16px;
+                border-radius: 8px;
+                border: 1px solid #e5e7eb;
+                font-size: 14px;
+                color: #6b7280;
+                margin: 20px 0;
+                line-height: 1.5;
+            }
+            
+            .expiry-notice {
+                background: #fff3cd;
+                border: 1px solid #ffeaa7;
+                border-radius: 8px;
+                padding: 16px;
+                margin: 24px 0;
+                text-align: center;
+            }
+            
+            .expiry-notice strong {
+                color: #856404;
+            }
+            
+            .security-tip {
+                background: #d1ecf1;
+                border: 1px solid #bee5eb;
+                border-radius: 8px;
+                padding: 16px;
+                margin: 20px 0;
+                font-size: 14px;
+                color: #0c5460;
+            }
+            
+            .support-section {
+                text-align: center;
+                margin-top: 32px;
+                padding-top: 24px;
+                border-top: 1px solid #e5e7eb;
+            }
+            
+            .support-text {
+                color: #6b7280;
+                font-size: 14px;
+                margin-bottom: 8px;
+            }
+            
+            .support-email {
+                color: #667eea;
+                font-weight: 600;
+                text-decoration: none;
+            }
+            
+            .email-footer {
+                background: #f8fafc;
+                padding: 24px 30px;
+                text-align: center;
+                border-top: 1px solid #e5e7eb;
+            }
+            
+            .footer-text {
+                color: #9ca3af;
+                font-size: 12px;
+                line-height: 1.5;
+                margin-bottom: 8px;
+            }
+            
+            .social-links {
+                margin: 16px 0;
+            }
+            
+            .social-link {
+                color: #6b7280;
+                text-decoration: none;
+                margin: 0 8px;
+                font-size: 12px;
+            }
+            
+            @media only screen and (max-width: 600px) {
+                .email-container {
+                    margin: 10px;
+                    border-radius: 12px;
+                }
+                
+                .email-header {
+                    padding: 30px 20px;
+                }
+                
+                .email-body {
+                    padding: 30px 20px;
+                }
+                
+                .reset-button {
+                    display: block;
+                    margin: 20px 0;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="email-container">
+            <!-- Header -->
+            <div class="email-header">
+                <div class="logo">SignLink</div>
+                <h1 class="email-title">Password Reset</h1>
+                <p class="email-subtitle">Secure your account</p>
+            </div>
+            
+            <!-- Body -->
+            <div class="email-body">
+                <p class="greeting">Hello,</p>
+                
+                <p class="reset-instruction">
+                    We received a request to reset your password for your SignLink account. 
+                    Click the button below to create a new password:
+                </p>
+                
+                <div style="text-align: center;">
+                    <a href="${resetLink}" class="reset-button" target="_blank">
+                        Reset Your Password
+                    </a>
+                </div>
+                
+                <div class="reset-link">
+                    Or copy and paste this link in your browser:<br>
+                    ${resetLink}
+                </div>
+                
+                <div class="expiry-notice">
+                    <strong>⚠️ This link will expire in 15 minutes</strong>
+                </div>
+                
+                <div class="security-tip">
+                    <strong>Security Tip:</strong> If you didn't request this password reset, 
+                    please ignore this email or contact support if you have concerns about your account security.
+                </div>
+                
+                <div class="support-section">
+                    <p class="support-text">Need help? Contact our support team</p>
+                    <a href="mailto:support@signlink.com" class="support-email">support@signlink.com</a>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="email-footer">
+                <p class="footer-text">
+                    © 2024 SignLink. All rights reserved.<br>
+                    Transforming the way you manage signatures and documents.
+                </p>
+                <div class="social-links">
+                    <a href="#" class="social-link">Website</a>
+                    <a href="#" class="social-link">Privacy Policy</a>
+                    <a href="#" class="social-link">Terms of Service</a>
+                </div>
+                <p class="footer-text">
+                    This email was sent to ${user.email} because you requested a password reset for your SignLink account.
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+  `
     });
-  } catch (error) {
-    console.error("Error updating user:", error);
-    res.status(500).json({ success: false, message: error.message });
+
+    res.json({
+      success: true,
+      message: "Password reset email sent successfully"
+    });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
 
-// Create API for lifeStyle and Tags
-exports.moreDetails = async (req, res) => {
+
+exports.resetPassword = async (req, res) => {
   try {
-    const data = req.body;
+    const { token } = req.params;
+    const { newPassword } = req.body;
 
-    if (!data || Object.keys(data).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Data is required.",
-      });
-    }
-
-    // Add the userId from the token into the data
-    const { id: userId } = req.user;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: userId not found.",
-      });
-    }
-
-    // Check if data contains title and description, create in Tags model
-    if (data.title && data.description) {
-      const tagData = {
-        title: data.title,
-        description: data.description,
-        userId, // Use the userId from the token
-      };
-
-      const response = await myServices.create(db.models.Tags, tagData);
-      console.log("Response from create:", response);
-      if (!response.success) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to create Tag.",
-          error: response.message || response.error,
-        });
+    const user = await db.models.User.findOne({
+      where: {
+        resetToken: token,
+        resetTokenExpiry: { [Sequelize.Op.gt]: Date.now() }
       }
-
-      return res.status(201).json({
-        success: true,
-        message: "Tag created successfully.",
-        data: response.data,
-      });
-    }
-    // Otherwise, create in lifeStyle model
-    const allowedFields = [
-      "title",
-      "category",
-      "description",
-      "occupation",
-      "personality_traits",
-      "preferred_age",
-      "preferred_height",
-      "body_type",
-      "location",
-      "education",
-      "income_source",
-      "industry",
-      "religious_believe",
-      "cultural_background",
-      "languages_spoken",
-      "love_languages",
-      "pet_preference",
-      "relationship_experience",
-      "children",
-      "astrological_sign",
-    ];
-
-    const validData = {};
-    for (const field of allowedFields) {
-      if (data[field] !== undefined) {
-        validData[field] = data[field];
-      }
-    }
-    if (Object.keys(validData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No valid fields provided to create a record.",
-      });
-    }
-    validData.userId = userId; // Include userId for lifeStyle records
-
-    const response = await myServices.create(db.models.lifeStyle, validData);
-
-    if (!response.success) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to create lifeStyle record.",
-        error: response.message || response.error,
-      });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: "Record created successfully.",
-      data: response.data,
     });
-  } catch (error) {
-    console.error("Error creating record:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal Server Error",
+
+    if (!user) {
+      return res.status(400).json({ success: false, message: "Invalid or expired token" });
+    }
+
+    // Hash password
+    const hashedPwd = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedPwd;
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+
+    await user.save();
+
+    // Send password reset confirmation email
+    await emailService.transporter.sendMail({
+      from: `"SignLink Security" <${process.env.EMAIL_USER}>`,
+      to: user.email,
+      subject: "Password Updated Successfully - SignLink",
+      html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Password Updated - SignLink</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+                
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                    background-color: #f8fafc;
+                    margin: 0;
+                    padding: 0;
+                }
+                
+                .email-container {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: #ffffff;
+                    border-radius: 16px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+                }
+                
+                .email-header {
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    padding: 40px 30px;
+                    text-align: center;
+                    color: white;
+                }
+                
+                .logo {
+                    font-size: 28px;
+                    font-weight: 700;
+                    margin-bottom: 10px;
+                    letter-spacing: -0.5px;
+                }
+                
+                .email-title {
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 8px;
+                }
+                
+                .email-subtitle {
+                    font-size: 16px;
+                    font-weight: 400;
+                    opacity: 0.9;
+                }
+                
+                .email-body {
+                    padding: 40px 30px;
+                    color: #374151;
+                }
+                
+                .greeting {
+                    font-size: 16px;
+                    line-height: 1.6;
+                    margin-bottom: 24px;
+                    color: #6b7280;
+                }
+                
+                .success-message {
+                    background: #d1fae5;
+                    border: 1px solid #a7f3d0;
+                    border-radius: 12px;
+                    padding: 20px;
+                    margin: 20px 0;
+                    text-align: center;
+                }
+                
+                .success-icon {
+                    font-size: 48px;
+                    margin-bottom: 16px;
+                }
+                
+                .success-text {
+                    color: #065f46;
+                    font-weight: 600;
+                    font-size: 18px;
+                    margin-bottom: 8px;
+                }
+                
+                .info-box {
+                    background: #f8fafc;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    padding: 16px;
+                    margin: 20px 0;
+                }
+                
+                .info-title {
+                    font-weight: 600;
+                    color: #374151;
+                    margin-bottom: 8px;
+                }
+                
+                .security-tips {
+                    background: #fef3c7;
+                    border: 1px solid #fcd34d;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 24px 0;
+                }
+                
+                .security-title {
+                    color: #92400e;
+                    font-weight: 600;
+                    margin-bottom: 12px;
+                    font-size: 16px;
+                }
+                
+                .tip-list {
+                    color: #92400e;
+                    font-size: 14px;
+                    line-height: 1.6;
+                }
+                
+                .tip-list li {
+                    margin-bottom: 8px;
+                }
+                
+                .action-required {
+                    background: #fee2e2;
+                    border: 1px solid #fca5a5;
+                    border-radius: 8px;
+                    padding: 16px;
+                    margin: 20px 0;
+                    text-align: center;
+                }
+                
+                .action-text {
+                    color: #dc2626;
+                    font-weight: 600;
+                    margin-bottom: 8px;
+                }
+                
+                .support-section {
+                    text-align: center;
+                    margin-top: 32px;
+                    padding-top: 24px;
+                    border-top: 1px solid #e5e7eb;
+                }
+                
+                .support-text {
+                    color: #6b7280;
+                    font-size: 14px;
+                    margin-bottom: 8px;
+                }
+                
+                .support-email {
+                    color: #10b981;
+                    font-weight: 600;
+                    text-decoration: none;
+                }
+                
+                .email-footer {
+                    background: #f8fafc;
+                    padding: 24px 30px;
+                    text-align: center;
+                    border-top: 1px solid #e5e7eb;
+                }
+                
+                .footer-text {
+                    color: #9ca3af;
+                    font-size: 12px;
+                    line-height: 1.5;
+                    margin-bottom: 8px;
+                }
+                
+                .social-links {
+                    margin: 16px 0;
+                }
+                
+                .social-link {
+                    color: #6b7280;
+                    text-decoration: none;
+                    margin: 0 8px;
+                    font-size: 12px;
+                }
+                
+                @media only screen and (max-width: 600px) {
+                    .email-container {
+                        margin: 10px;
+                        border-radius: 12px;
+                    }
+                    
+                    .email-header {
+                        padding: 30px 20px;
+                    }
+                    
+                    .email-body {
+                        padding: 30px 20px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <!-- Header -->
+                <div class="email-header">
+                    <div class="logo">SignLink</div>
+                    <h1 class="email-title">Password Updated</h1>
+                    <p class="email-subtitle">Your account is now secure</p>
+                </div>
+                
+                <!-- Body -->
+                <div class="email-body">
+                    <p class="greeting">Hello ${user.firstName || 'there'},</p>
+                    
+                    <div class="success-message">
+                        <div class="success-icon">✅</div>
+                        <div class="success-text">Password Updated Successfully!</div>
+                        <p style="color: #065f46; margin: 0;">Your SignLink account password has been reset successfully.</p>
+                    </div>
+                    
+                    <div class="info-box">
+                        <div class="info-title">📅 Update Details:</div>
+                        <p style="color: #6b7280; margin: 8px 0 0 0;">
+                            • Password changed: ${new Date().toLocaleString()}<br>
+                            • Account: ${user.email}<br>
+                            • IP Address: ${req.ip || req.connection.remoteAddress}
+                        </p>
+                    </div>
+                    
+                    <div class="security-tips">
+                        <div class="security-title">🔒 Security Tips:</div>
+                        <ul class="tip-list">
+                            <li>Use a strong, unique password that you don't use elsewhere</li>
+                            <li>Enable two-factor authentication for extra security</li>
+                            <li>Never share your password with anyone</li>
+                            <li>Log out from shared devices after use</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="action-required">
+                        <div class="action-text">⚠️ Didn't make this change?</div>
+                        <p style="color: #dc2626; margin: 8px 0 0 0; font-size: 14px;">
+                            If you didn't reset your password, please contact our support team immediately 
+                            and consider changing your password again.
+                        </p>
+                    </div>
+                    
+                    <div class="support-section">
+                        <p class="support-text">Need help or have questions?</p>
+                        <a href="mailto:support@signlink.com" class="support-email">support@signlink.com</a>
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div class="email-footer">
+                    <p class="footer-text">
+                        © 2024 SignLink. All rights reserved.<br>
+                        Secure signature management for modern businesses.
+                    </p>
+                    <div class="social-links">
+                        <a href="#" class="social-link">Website</a>
+                        <a href="#" class="social-link">Privacy Policy</a>
+                        <a href="#" class="social-link">Terms of Service</a>
+                    </div>
+                    <p class="footer-text">
+                        This is a security notification for your SignLink account.
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+      `
     });
+
+    res.json({ success: true, message: "Password reset successful" });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
+
 
 
