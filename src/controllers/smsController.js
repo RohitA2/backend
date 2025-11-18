@@ -2,6 +2,7 @@ const twilio = require("twilio");
 require("dotenv").config();
 const db = require("../config/database");
 const { Op } = require("sequelize");
+const { MessagingResponse } = twilio.twiml;
 
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
