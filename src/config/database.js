@@ -148,7 +148,7 @@ const clearDatabase = async () => {
 const initializeDatabase = async () => {
   try {
     await authenticateDatabase();
-    await syncModels();
+    // await syncModels();
     // Uncomment if needed:
     // await runAllSeeders();
     //  await clearDatabase();

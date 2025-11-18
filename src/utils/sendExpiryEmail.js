@@ -127,7 +127,7 @@ async function sendExpiryEmail({ to, name, proposalName, expirationDate, link, s
                 </div>
                 <div style="border-top: 1px solid #dee2e6; padding-top: 15px;">
                     <p style="color: #999; margin: 0; font-size: 11px;">
-                        © ${new Date().getFullYear()} MyApp. All rights reserved.<br>
+                        © ${new Date().getFullYear()} SignLink. All rights reserved.<br>
                         This email was sent automatically. Please do not reply to this message.
                     </p>
                 </div>

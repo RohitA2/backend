@@ -19,8 +19,8 @@ exports.sendSMS = async (req, res) => {
   }
 
   console.log("i am from twilio body", req.body);
-  
-  
+
+
   try {
     const msg = await client.messages.create({
       body: message,
@@ -53,34 +53,106 @@ exports.sendSMS = async (req, res) => {
   }
 };
 
+// exports.receiveSMS = async (req, res) => {
+//   try {
+//     const from = req.body.From; // sender's phone
+//     const to = req.body.To; // your Twilio phone
+//     const body = req.body.Body; // SMS content
+//     const sid = req.body.MessageSid;
+
+//     console.log(`📩 Incoming SMS from ${from} to ${to}: ${body}`);
+
+//     // Save inbound SMS in DB
+//     await db.models.Message.create({
+//       sid,
+//       from,
+//       to,
+//       body,
+//       direction: "inbound",
+//       status: "received",
+//     });
+
+//     // ✅ Optional: Auto-reply back to sender
+//     const twiml = new twilio.twiml.MessagingResponse();
+//     twiml.message(`You said: "${body}"`);
+
+//     res.writeHead(200, { "Content-Type": "text/xml" });
+//     res.end(twiml.toString());
+//   } catch (error) {
+//     console.error("❌ Error saving inbound SMS:", error.message);
+//     res.status(500).send("Error processing SMS");
+//   }
+// };
+
 exports.receiveSMS = async (req, res) => {
   try {
-    const from = req.body.From; // sender's phone
-    const to = req.body.To; // your Twilio phone
-    const body = req.body.Body; // SMS content
+    // 🔍 Log entire Twilio payload for debugging
+    console.log("========== 🌐 Incoming Twilio Webhook Payload ==========");
+    console.log(JSON.stringify(req.body, null, 2));
+    console.log("========================================================");
+
+    const from = req.body.From;
+    const to = req.body.To;
+    const body = req.body.Body;
     const sid = req.body.MessageSid;
 
-    console.log(`📩 Incoming SMS from ${from} to ${to}: ${body}`);
+    console.log(`📩 Incoming SMS:
+      From: ${from}
+      To: ${to}
+      Body: ${body}
+      SID: ${sid}
+    `);
 
-    // Save inbound SMS in DB
-    await db.models.Message.create({
+    if (!body || body.trim() === "") {
+      console.warn("⚠️ Warning: Message Body is empty or undefined.");
+    }
+
+    // 💾 Save inbound SMS in DB
+    const savedMessage = await db.models.Message.create({
       sid,
       from,
       to,
-      body,
+      body: body || "(empty message)",
       direction: "inbound",
       status: "received",
     });
 
-    // ✅ Optional: Auto-reply back to sender
-    const twiml = new twilio.twiml.MessagingResponse();
+    // 🟢 Print the saved DB record
+    console.log("✅ Message saved in DB:");
+    console.log(JSON.stringify(savedMessage.toJSON(), null, 2));
+
+    // Respond back to user
+    const twiml = new MessagingResponse();
     twiml.message(`You said: "${body}"`);
 
     res.writeHead(200, { "Content-Type": "text/xml" });
-    res.end(twiml.toString());
+    return res.end(twiml.toString());
+
   } catch (error) {
-    console.error("❌ Error saving inbound SMS:", error.message);
-    res.status(500).send("Error processing SMS");
+    console.error("❌ Error saving inbound SMS:");
+
+    // Detailed DB/Sequelize error logging
+    if (error.name?.includes("Sequelize")) {
+      console.error("🔍 Sequelize Error Details:");
+      console.error(JSON.stringify(error, null, 2));
+
+      if (error.errors) {
+        error.errors.forEach((err, index) =>
+          console.error(`   (${index + 1}) Field: ${err.path}, Message: ${err.message}`)
+        );
+      }
+    } else {
+      console.error("🔍 General Error:", error);
+    }
+
+    // Twilio STILL needs valid XML response
+    const twiml = new MessagingResponse();
+    twiml.message(
+      "We received your message, but an internal database error occurred."
+    );
+
+    res.writeHead(200, { "Content-Type": "text/xml" });
+    return res.end(twiml.toString());
   }
 };
 
