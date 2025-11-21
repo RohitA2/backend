@@ -2,7 +2,6 @@
 const userRoutes = require("./userRoutes");
 const authRoutes = require("./authRoutes");
 const uploadRoutes = require("./uploadRoutes");
-// const sendMessageRoute = require("./sendMessageRoute");
 const recipientRoutes = require("./recipientRoutes");
 const emailRoutes = require("./emailRoutes");
 const documentRoutes = require("./documentRoutes");
@@ -22,9 +21,7 @@ const pricingRoutes = require("./pricingServiceRoutes");
 const coverBlockRoutes = require("./coverRoutes");
 const smsRoutes = require("./smsRoutes");
 const notificationRoutes = require("./notificationRoutes");
-const bankidRoutes = require('./bankidRoutes');
-const signicatRoutes = require('./signicat.routes');
-const zignsecRoutes = require("./zignsecRoutes")
+const bankidPdf = require("./bankidPdf");
 
 
 
@@ -33,7 +30,6 @@ module.exports = (app) => {
   app.use("/api/users", userRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api", uploadRoutes);
-  // app.use("/api", sendMessageRoute);
   app.use("/api", recipientRoutes);
   app.use("/api", emailRoutes);
   app.use("/api", documentRoutes);
@@ -53,7 +49,5 @@ module.exports = (app) => {
   app.use("/cover", coverBlockRoutes);
   app.use("/sms", smsRoutes);
   app.use('/notifications', notificationRoutes);
-  // app.use('/api', bankidRoutes);
-  app.use("/api", signicatRoutes);
-  app.use('/api/zignsec', zignsecRoutes);
+  app.use('/api/bankid', bankidPdf);
 };

@@ -34,6 +34,14 @@ const Signature = sequelize.define(
       type: DataTypes.STRING, 
       allowNull: true,
     },
+    session_id:{
+      type:DataTypes.STRING,
+      allowNull:true
+    },
+    declinedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: "Signature",
