@@ -54,7 +54,7 @@ exports.createSchedule = async (req, res) => {
 };
 
 // Get all schedules
-exports.getSchedules = async (req, res) => {
+exports.getSchedules = async (req, res) => {  
   try {
     const schedules = await db.models.Schedule.findAll({
       order: [["createdAt", "DESC"]],
@@ -233,6 +233,7 @@ exports.updateSchedule = async (req, res) => {
     });
   }
 };
+
 
 exports.scheduleByUserId = async (req, res) => {
   const t = await db.sequelize.transaction();

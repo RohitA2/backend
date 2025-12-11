@@ -33,21 +33,135 @@ exports.getSignatures = async (req, res) => {
   }
 };
 
+// exports.updateSignatureStatus = async (req, res) => {
+//   try {
+//     const {
+//       method,
+//       signature,
+//       comment,
+//       user_id,
+//       parent_id,
+//       recipient_email,
+//       recipient_name,
+//       ip_details,
+//     } = req.body;
+//     const { id: blockId } = req.params; // blockId passed in URL
+
+//     console.log("i am from signature controller :", req.body);
+
+//     // 1️⃣ Find signature record by blockId
+//     const signatureRecord = await db.models.Signature.findOne({
+//       where: { blockId },
+//     });
+
+//     console.log("signatureRecord:", signatureRecord);
+
+//     if (!signatureRecord) {
+//       return res.status(404).json({ error: "Signature record not found" });
+//     }
+
+//     // 2️⃣ Prevent double signing / decline
+//     if (
+//       signatureRecord.status === true &&
+//       signatureRecord.method !== "decline"
+//     ) {
+//       return res
+//         .status(400)
+//         .json({ error: "Already signed, cannot update again." });
+//     }
+//     if (signatureRecord.method === "decline") {
+//       return res
+//         .status(400)
+//         .json({ error: "Already declined, cannot update again." });
+//     }
+
+//     // 3️⃣ Validation
+//     if (method === "draw" && !signature) {
+//       return res.status(400).json({ error: "Signature image is required." });
+//     }
+//     if (method === "type" && !signature?.trim()) {
+//       return res.status(400).json({ error: "Typed name is required." });
+//     }
+//     if (method === "decline" && !comment?.trim()) {
+//       return res.status(400).json({ error: "Decline reason is required." });
+//     }
+
+//     // 4️⃣ Update signature record
+//     await signatureRecord.update({
+//       status: method === "decline" ? false : true,
+//       signature: method === "decline" ? null : signature,
+//       comment: method === "decline" ? comment : null,
+//       method,
+//        ip_details: method === "ip" ? ip_details : null,
+//     });
+
+//     // 5️⃣ Get sender and receiver details
+//     const sender = await db.models.User.findByPk(user_id);
+//     // const receiver = await db.models.User.findByPk(recipient_id);
+
+//     if (!sender?.email) {
+//       console.warn("Sender email missing, skipping email notification.");
+//     } else {
+//       // 6️⃣ Prepare email
+//       const actionLabel = method === "decline" ? "declined" : "signed";
+//       const subject = `Document ${actionLabel} by ${recipient_name || recipient_email
+//         }`;
+//       const html = `
+//         <div style="font-family: Arial,sans-serif; line-height:1.5;">
+//           <h3>Hello ${sender.firstName || sender.email},</h3>
+//           <p><strong>${recipient_name || recipient_email
+//         }</strong> has <strong style="color:${method === "decline" ? "red" : "green"
+//         };">${actionLabel}</strong> the document.</p>
+//           ${comment ? `<p><strong>Comment:</strong> ${comment}</p>` : ""}
+//           ${method === "draw" && signature
+//           ? `<img src="${signature}" alt="Signature" style="max-width:200px;"/>`
+//           : ""
+//         }
+//           <hr/>
+//           <small>Document ID: ${parent_id} • Updated at: ${new Date().toLocaleString()}</small>
+//         </div>
+//       `;
+
+//       // 7️⃣ Send email immediately
+//       await sendMail({ to: sender.email, subject, html });
+//     }
+
+//     // 8️⃣ Return response
+//     return res.json({ success: true, data: signatureRecord });
+//   } catch (error) {
+//     console.error("statusUpdated error:", error);
+//     return res.status(500).json({ error: "Failed to update signature" });
+//   }
+// };
+
 exports.updateSignatureStatus = async (req, res) => {
   try {
     const {
-      method,
+      signature_method: method,  // Map 'signature_method' from body to 'method'
       signature,
       comment,
       user_id,
       parent_id,
       recipient_email,
       recipient_name,
-      recipient_id,
+      ip_details,
+      session_id,  // Optional: Add if needed for uniqueness validation
     } = req.body;
     const { id: blockId } = req.params; // blockId passed in URL
 
-    console.log("i am from signature controller :", req.body);
+    console.log("Request body from signature controller:", req.body);
+    console.log("Mapped method:", method);  // Debug: Confirm mapping
+
+    // Early input validation
+    if (!blockId) {
+      return res.status(400).json({ error: "Block ID is required in URL params." });
+    }
+    if (!method) {
+      return res.status(400).json({ error: "Signature method is required (sent as 'signature_method' in body)." });
+    }
+    if (!user_id) {
+      return res.status(400).json({ error: "User ID is required." });
+    }
 
     // 1️⃣ Find signature record by blockId
     const signatureRecord = await db.models.Signature.findOne({
@@ -60,22 +174,30 @@ exports.updateSignatureStatus = async (req, res) => {
       return res.status(404).json({ error: "Signature record not found" });
     }
 
-    // 2️⃣ Prevent double signing / decline
-    if (
-      signatureRecord.status === true &&
-      signatureRecord.method !== "decline"
-    ) {
-      return res
-        .status(400)
-        .json({ error: "Already signed, cannot update again." });
+    // 2️⃣ Prevent double signing / decline (enhanced with session_id if provided)
+    if (signatureRecord.status === true && signatureRecord.method !== "decline") {
+      return res.status(400).json({ error: "Already signed, cannot update again." });
     }
     if (signatureRecord.method === "decline") {
-      return res
-        .status(400)
-        .json({ error: "Already declined, cannot update again." });
+      return res.status(400).json({ error: "Already declined, cannot update again." });
     }
 
-    // 3️⃣ Validation
+    // Optional: Previously signed check using session_id (if available)
+    if (session_id && method !== "decline") {
+      const alreadySigned = await db.models.Signature.findOne({
+        where: {
+          blockId,
+          session_id,
+          status: true,
+          method: { [db.Op.ne]: "decline" }
+        }
+      });
+      if (alreadySigned) {
+        return res.status(409).json({ error: "Already signed for this session/block." });
+      }
+    }
+
+    // 3️⃣ Method-specific validation
     if (method === "draw" && !signature) {
       return res.status(400).json({ error: "Signature image is required." });
     }
@@ -85,54 +207,76 @@ exports.updateSignatureStatus = async (req, res) => {
     if (method === "decline" && !comment?.trim()) {
       return res.status(400).json({ error: "Decline reason is required." });
     }
+    if (method === "ip" && (!ip_details || typeof ip_details !== "object" || Object.keys(ip_details).length === 0)) {
+      return res.status(400).json({ error: "Valid IP details object is required for 'ip' method." });
+    }
 
-    // 4️⃣ Update signature record
-    await signatureRecord.update({
+    // 4️⃣ Prepare update payload
+    const updatePayload = {
       status: method === "decline" ? false : true,
-      signature: method === "decline" ? null : signature,
-      comment: method === "decline" ? comment : null,
       method,
-    });
+      session_id: session_id || signatureRecord.session_id,  // Preserve or set
+      parentId: parent_id || signatureRecord.parentId,  // From body or existing
+    };
 
-    // 5️⃣ Get sender and receiver details
+    // Conditional fields
+    if (method === "decline") {
+      updatePayload.signature = null;
+      updatePayload.comment = comment;
+      updatePayload.declinedAt = new Date();  // Auto-set if declining
+    } else {
+      updatePayload.signature = signature || null;
+      updatePayload.comment = null;  // Clear on successful sign
+    }
+
+    // Handle ip_details (key fix: always set for 'ip', preserve otherwise)
+    if (method === "ip") {
+      updatePayload.ip_details = ip_details;  // Save the full JSON object
+      console.log("Setting ip_details in payload:", ip_details);  // Debug log
+    } else {
+      updatePayload.ip_details = signatureRecord.ip_details;  // Preserve existing
+    }
+
+    // 5️⃣ Update signature record
+    const updatedRecord = await signatureRecord.update(updatePayload);
+    console.log("Updated record:", updatedRecord);  // Should show ip_details populated
+
+    // 6️⃣ Get sender details
     const sender = await db.models.User.findByPk(user_id);
-    // const receiver = await db.models.User.findByPk(recipient_id);
 
     if (!sender?.email) {
       console.warn("Sender email missing, skipping email notification.");
     } else {
-      // 6️⃣ Prepare email
+      // 7️⃣ Prepare email
       const actionLabel = method === "decline" ? "declined" : "signed";
-      const subject = `Document ${actionLabel} by ${recipient_name || recipient_email
-        }`;
+      const subject = `Document ${actionLabel} by ${recipient_name || recipient_email}`;
       const html = `
         <div style="font-family: Arial,sans-serif; line-height:1.5;">
           <h3>Hello ${sender.firstName || sender.email},</h3>
-          <p><strong>${recipient_name || recipient_email
-        }</strong> has <strong style="color:${method === "decline" ? "red" : "green"
-        };">${actionLabel}</strong> the document.</p>
+          <p><strong>${recipient_name || recipient_email}</strong> has <strong style="color:${method === "decline" ? "red" : "green"};">${actionLabel}</strong> the document.</p>
           ${comment ? `<p><strong>Comment:</strong> ${comment}</p>` : ""}
-          ${method === "draw" && signature
-          ? `<img src="${signature}" alt="Signature" style="max-width:200px;"/>`
-          : ""
-        }
+          ${method === "draw" && signature ? `<img src="${signature}" alt="Signature" style="max-width:200px;"/>` : ""}
+          ${method === "ip" ? `<p><strong>Via IP Signature:</strong> ${ip_details?.ip} from ${ip_details?.city}, ${ip_details?.country}</p>` : ""}
           <hr/>
           <small>Document ID: ${parent_id} • Updated at: ${new Date().toLocaleString()}</small>
         </div>
       `;
 
-      // 7️⃣ Send email immediately
+      // 8️⃣ Send email immediately
       await sendMail({ to: sender.email, subject, html });
     }
 
-    // 8️⃣ Return response
-    return res.json({ success: true, data: signatureRecord });
+    // 9️⃣ Return response with updated data
+    return res.json({ success: true, data: updatedRecord });
   } catch (error) {
     console.error("statusUpdated error:", error);
+    // Enhanced error handling
+    if (error.name === "SequelizeDatabaseError") {
+      return res.status(400).json({ error: "Database error: Invalid data provided." });
+    }
     return res.status(500).json({ error: "Failed to update signature" });
   }
 };
-
 exports.getSignatureByBlockId = async (req, res) => {
   try {
     const { id } = req.params;

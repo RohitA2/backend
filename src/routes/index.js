@@ -22,7 +22,8 @@ const coverBlockRoutes = require("./coverRoutes");
 const smsRoutes = require("./smsRoutes");
 const notificationRoutes = require("./notificationRoutes");
 const bankidPdf = require("./bankidPdf");
-
+const serviceRoutes = require("./serviceRouter");
+const adminRoutes = require("./adminRoutes");
 
 
 module.exports = (app) => {
@@ -50,4 +51,6 @@ module.exports = (app) => {
   app.use("/sms", smsRoutes);
   app.use('/notifications', notificationRoutes);
   app.use('/api/bankid', bankidPdf);
+  app.use('/service', serviceRoutes);
+  app.use('/admin', adminRoutes);
 };

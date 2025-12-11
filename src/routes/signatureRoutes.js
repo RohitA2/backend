@@ -12,7 +12,7 @@ const {
 router.post("/create", createSignature);
 router.get("/sign/:id", getSignatureByBlockId);
 router.get("/:id", getSignatures);
-router.put("/:id", updateSignatureStatus);
+router.post("/:id", updateSignatureStatus);
 router.put("/decline/:id", DeclineSignature);
 
 module.exports = router;

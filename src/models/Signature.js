@@ -42,6 +42,14 @@ const Signature = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    ip_details:{
+      type:DataTypes.JSON,
+      allowNull:true
+    },
+    messageId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     tableName: "Signature",
