@@ -22,7 +22,7 @@ exports.createSignature = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
- 
+
 // ✅ Get all signatures 
 exports.getSignatures = async (req, res) => {
   try {
@@ -249,18 +249,280 @@ exports.updateSignatureStatus = async (req, res) => {
     } else {
       // 7️⃣ Prepare email
       const actionLabel = method === "decline" ? "declined" : "signed";
-      const subject = `Document ${actionLabel} by ${recipient_name || recipient_email}`;
+      const subject = `Document ${actionLabel} by ${recipient_name || recipient_email || 'Signer'}`;
       const html = `
-        <div style="font-family: Arial,sans-serif; line-height:1.5;">
-          <h3>Hello ${sender.firstName || sender.email},</h3>
-          <p><strong>${recipient_name || recipient_email}</strong> has <strong style="color:${method === "decline" ? "red" : "green"};">${actionLabel}</strong> the document.</p>
-          ${comment ? `<p><strong>Comment:</strong> ${comment}</p>` : ""}
-          ${method === "draw" && signature ? `<img src="${signature}" alt="Signature" style="max-width:200px;"/>` : ""}
-          ${method === "ip" ? `<p><strong>Via IP Signature:</strong> ${ip_details?.ip} from ${ip_details?.city}, ${ip_details?.country}</p>` : ""}
-          <hr/>
-          <small>Document ID: ${parent_id} • Updated at: ${new Date().toLocaleString()}</small>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Update Notification</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8fafc;
+            padding: 20px;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .email-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 32px 40px;
+            text-align: center;
+        }
+        
+        .email-logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        
+        .email-tagline {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .email-body {
+            padding: 40px;
+        }
+        
+        .greeting {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #1e293b;
+        }
+        
+        .action-card {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            border-left: 4px solid ${method === "decline" ? "#ef4444" : method === "draw" ? "#8b5cf6" : "#10b981"};
+        }
+        
+        .action-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: ${method === "decline" ? "#fef2f2" : method === "draw" ? "#f5f3ff" : "#f0fdf4"};
+            color: ${method === "decline" ? "#dc2626" : method === "draw" ? "#8b5cf6" : "#059669"};
+            font-size: 20px;
+            margin-right: 12px;
+        }
+        
+        .action-text {
+            font-size: 18px;
+            color: #1e293b;
+        }
+        
+        .recipient-name {
+            font-weight: 600;
+            color: #334155;
+        }
+        
+        .action-status {
+            font-weight: 600;
+            color: ${method === "decline" ? "#dc2626" : "#059669"};
+        }
+        
+        .comment-box {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+            border-left: 3px solid #94a3b8;
+        }
+        
+        .comment-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .signature-container {
+            text-align: center;
+            margin: 24px 0;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 12px;
+        }
+        
+        .signature-image {
+            max-width: 300px;
+            height: auto;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+            background: white;
+        }
+        
+        .ip-details {
+            display: inline-flex;
+            align-items: center;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 16px;
+        }
+        
+        .ip-icon {
+            margin-right: 6px;
+        }
+        
+        .document-info {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 32px;
+            font-size: 13px;
+            color: #64748b;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .info-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-value {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            color: #334155;
+            word-break: break-all;
+        }
+        
+        .email-footer {
+            text-align: center;
+            padding: 24px 40px;
+            background: #f1f5f9;
+            color: #64748b;
+            font-size: 12px;
+        }
+        
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+            margin: 32px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <div class="email-logo">📄 DocumentFlow</div>
+            <div class="email-tagline">Secure Document Management</div>
         </div>
-      `;
+        
+        <div class="email-body">
+            <h2 class="greeting">Hello ${sender.firstName || sender.email || 'There'},</h2>
+            
+            <div class="action-card">
+                <div style="display: flex; align-items: center;">
+                    <span class="action-icon">
+                        ${method === "decline" ? "✗" : method === "draw" ? "✍️" : "✓"}
+                    </span>
+                    <div class="action-text">
+                        <span class="recipient-name">${recipient_name || recipient_email || 'A signer'}</span> 
+                        has <span class="action-status">${actionLabel}</span> the document
+                    </div>
+                </div>
+                
+                ${comment ? `
+                <div class="comment-box">
+                    <div class="comment-label">Comment</div>
+                    <div>${comment}</div>
+                </div>
+                ` : ""}
+                
+                ${method === "draw" && signature ? `
+                <div class="signature-container">
+                    <div class="comment-label" style="margin-bottom: 12px;">Digital Signature</div>
+                    <img src="${signature}" alt="Signature" class="signature-image"/>
+                </div>
+                ` : ""}
+                
+                ${method === "ip" ? `
+                <div class="ip-details">
+                    <span class="ip-icon">🌐</span>
+                    <span>Via IP Signature: ${ip_details?.ip || 'Unknown IP'} from ${ip_details?.city || 'Unknown city'}, ${ip_details?.country || 'Unknown country'}</span>
+                </div>
+                ` : ""}
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div class="document-info">
+                <div class="comment-label">Document Information</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Document ID</span>
+                        <span class="info-value">${parent_id || 'N/A'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status Updated</span>
+                        <span class="info-value">${new Date().toLocaleString()}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Action Method</span>
+                        <span class="info-value">${method || 'N/A'}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="email-footer">
+            <p>This is an automated notification from DocumentFlow.</p>
+            <p style="margin-top: 4px;">© ${new Date().getFullYear()} DocumentFlow. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+`;
 
       // 8️⃣ Send email immediately
       await sendMail({ to: sender.email, subject, html });
