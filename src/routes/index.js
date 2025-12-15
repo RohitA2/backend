@@ -24,7 +24,7 @@ const notificationRoutes = require("./notificationRoutes");
 const bankidPdf = require("./bankidPdf");
 const serviceRoutes = require("./serviceRouter");
 const adminRoutes = require("./adminRoutes");
-
+const notesRoutes = require("./noteRoutes");
 
 module.exports = (app) => {
   // Authentication routes for all  
@@ -53,4 +53,5 @@ module.exports = (app) => {
   app.use('/api/bankid', bankidPdf);
   app.use('/service', serviceRoutes);
   app.use('/admin', adminRoutes);
+  app.use('/notes', notesRoutes);
 };
