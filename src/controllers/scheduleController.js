@@ -54,7 +54,7 @@ exports.createSchedule = async (req, res) => {
 };
 
 // Get all schedules
-exports.getSchedules = async (req, res) => {  
+exports.getSchedules = async (req, res) => {
   try {
     const schedules = await db.models.Schedule.findAll({
       order: [["createdAt", "DESC"]],
@@ -122,9 +122,29 @@ exports.updateSchedule = async (req, res) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ success: false, error: "Invalid date format. Use YYYY-MM-DD." });
     }
-    if (!/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-      return res.status(400).json({ success: false, error: "Invalid time format. Use HH:mm:ss." });
+    // Normalize time input
+    let normalizedTime = time;
+
+    // If time has more than 2 colons → trim to HH:mm:ss
+    const timeParts = normalizedTime.split(":");
+
+    if (timeParts.length >= 2) {
+      normalizedTime = timeParts.slice(0, 3).join(":");
     }
+
+    // If only HH:mm → append seconds
+    if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
+      normalizedTime = `${normalizedTime}:00`;
+    }
+
+    // Final validation
+    if (!/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid time format. Use HH:mm or HH:mm:ss.",
+      });
+    }
+
 
     // Find the schedule
     const schedule = await db.models.Schedule.findByPk(scheduleId);
@@ -134,7 +154,14 @@ exports.updateSchedule = async (req, res) => {
     if (!parentId) return res.status(400).json({ success: false, error: "Parent ID not found for this schedule." });
 
     // Update the schedule
-    await schedule.update({ date, time, comment: comment || null, description: description || null, location: location || null });
+    await schedule.update({
+      date,
+      time: normalizedTime,
+      comment: comment || null,
+      description: description || null,
+      location: location || null,
+    });
+
     console.log(`✅ Schedule #${scheduleId} updated successfully.`);
 
     // Immediate API response

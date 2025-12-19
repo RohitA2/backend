@@ -5,6 +5,6 @@ const controller = require("../controllers/headerBlockController");
 
 router.post("/CreateHeaderBlock", controller.createHeaderBlock);
 router.get("/headerBlock", controller.getHeaderBlock);
-router.put("/headerBlock/:id", controller.updateHeaderBlock);
+router.post("/header/:id", controller.updateHeaderBlock);
 
 module.exports = router;
