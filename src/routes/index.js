@@ -25,7 +25,7 @@ const bankidPdf = require("./bankidPdf");
 const serviceRoutes = require("./serviceRouter");
 const adminRoutes = require("./adminRoutes");
 const notesRoutes = require("./noteRoutes");
-
+const emRoutes = require("./employe.routes");
 module.exports = (app) => {
   // Authentication routes for all  
   app.use("/api/users", userRoutes);
@@ -54,4 +54,5 @@ module.exports = (app) => {
   app.use('/service', serviceRoutes);
   app.use('/admin', adminRoutes);
   app.use('/notes', notesRoutes);
+  app.use('/em', emRoutes);
 };

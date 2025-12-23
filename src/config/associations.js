@@ -26,6 +26,10 @@ sequelize.models = models;
 const defineAssociations = () => {
   // Example of associations (modify according to your models)
 
+  models.User.hasOne(models.CompanyDetails, { foreignKey: "userId" });
+  models.CompanyDetails.belongsTo(models.User, { foreignKey: "userId" });
+
+
   // User ke apne clients
   models.User.hasMany(models.Client, {
     foreignKey: "user_id",
@@ -156,6 +160,23 @@ const defineAssociations = () => {
     as: "proposalEmail",
     constraints: false,
   });
+
+
+ models.Parent.hasMany(models.ProposalEmail, {
+  foreignKey: "parentId",
+  sourceKey: "id",
+  as: "proposals",
+  constraints: false, // 🔥 VERY IMPORTANT
+});
+
+models.ProposalEmail.belongsTo(models.Parent, {
+  foreignKey: "parentId",
+  targetKey: "id",
+  as: "parent",
+  constraints: false, // 🔥 VERY IMPORTANT
+});
+
+
 
 };
 

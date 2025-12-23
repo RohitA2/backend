@@ -16,10 +16,64 @@ const { Op } = Sequelize;
 
 
 // Register new user
+// exports.register = async (req, res) => {
+//   try {
+//     const userData = req.body;
+//     const name = userData.name;
+
+//     // Check if email already exists
+//     const where = { email: userData.email };
+//     const existingUser = await userService.checkExist(db.models.User, where);
+
+//     if (existingUser.success) {
+//       const blockStatus = await otpService.checkBlockStatus(existingUser.data);
+//       if (blockStatus.isBlocked !== false) {
+//         return res.status(400).json({ data: blockStatus });
+//       }
+
+//       if (existingUser.data.is_verified !== true) {
+//         return res.status(400).json({
+//           success: false,
+//           isVerified: false,
+//           message:
+//             "Your account is not verified. Please check your email for the verification OTP.",
+//         });
+//       }
+
+//       return res.status(400).json({ message: "Email already exists" });
+//     }
+//     const saltRounds = 10;
+//     const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+
+//     userData.password = hashedPassword;
+
+//     const newUser = await userService.create(db.models.User, userData);
+
+//     const response = await sendVerificationOtp(newUser, "registration");
+//     if (!response.success) {
+//       return res.status(400).json(response);
+//     }
+
+//     if (!newUser.success) {
+//       return res.status(400).json(newUser);
+//     }
+
+//     res.status(200).json({
+//       message: "User registered successfully",
+//       user: newUser.data, // Send actual user data
+//       otp: response.otp,
+//       isVerified: false,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: error.message });
+//   }
+// };
+
 exports.register = async (req, res) => {
+  const transaction = await db.sequelize.transaction();
   try {
     const userData = req.body;
-    const name = userData.name;
 
     // Check if email already exists
     const where = { email: userData.email };
@@ -42,29 +96,63 @@ exports.register = async (req, res) => {
 
       return res.status(400).json({ message: "Email already exists" });
     }
+
+    // Hash password
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+    userData.password = await bcrypt.hash(userData.password, saltRounds);
 
-    userData.password = hashedPassword;
+    // Create User
+    const newUser = await db.models.User.create(userData, { transaction });
 
-    const newUser = await userService.create(db.models.User, userData);
+    // 👉 Check if company details exist
+    const {
+      companyName,
+      companySize,
+      companyWebsite,
+      phoneNumber,
+      accountType,
+      taxId
+    } = userData;
 
+    if (
+      companyName ||
+      companySize ||
+      companyWebsite ||
+      phoneNumber ||
+      accountType ||
+      taxId
+    ) {
+      await db.models.CompanyDetails.create(
+        {
+          userId: newUser.id, // FK
+          companyName,
+          companySize,
+          companyWebsite,
+          phoneNumber,
+          accountType,
+          taxId
+        },
+        { transaction }
+      );
+    }
+
+    // Send OTP
     const response = await sendVerificationOtp(newUser, "registration");
     if (!response.success) {
+      await transaction.rollback();
       return res.status(400).json(response);
     }
 
-    if (!newUser.success) {
-      return res.status(400).json(newUser);
-    }
+    await transaction.commit();
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "User registered successfully",
-      user: newUser.data, // Send actual user data
+      user: newUser,
       otp: response.otp,
       isVerified: false,
     });
   } catch (error) {
+    await transaction.rollback();
     console.error(error);
     res.status(500).json({ message: error.message });
   }
@@ -105,7 +193,13 @@ exports.login = async (req, res) => {
   // console.log("email is", email);
 
   try {
-    const user = await userService.checkExist(db.models.User, { email: email });
+    const user = await userService.checkExist(db.models.User, { email },
+      [
+        {
+          model: db.models.CompanyDetails,
+          required: false, // company optional
+        },
+      ]);
     if (!user.success) {
       return res.status(400).json({ message: "User not found" });
     }

@@ -10,7 +10,8 @@ const ProposalEmail = sequelize.define(
       autoIncrement: true,
     },
     parentId: {
-      type: DataTypes.TEXT,
+      type: DataTypes.UUID,
+      allowNull: true,
     },
     userId: {
       type: DataTypes.INTEGER,

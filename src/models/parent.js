@@ -16,6 +16,10 @@ const Parent = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    companyId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     tableName: "parents",

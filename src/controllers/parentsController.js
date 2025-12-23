@@ -4,13 +4,13 @@ const { sequelize } = require("../config/database");
 
 exports.createParent = async (req, res) => {
   try {
-    const { user_id } = req.body || {};
+    const { user_id, company_id } = req.body || {};
     console.log(
       "userId +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
       user_id
     );
 
-    const parent = await db.models.Parent.create({ user_id });
+    const parent = await db.models.Parent.create({ user_id, companyId: company_id });
     res.status(201).json({ id: parent.id });
   } catch (e) {
     console.error("Failed to create parent:", e);
@@ -113,9 +113,9 @@ exports.upsertOrder = async (req, res) => {
 
     await Promise.all(blockPromises);
     await t.commit();
-    
-    return res.json({ 
-      ok: true, 
+
+    return res.json({
+      ok: true,
       count: blocks.length,
       message: "Blocks reordered successfully"
     });

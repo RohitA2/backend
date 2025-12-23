@@ -31,20 +31,20 @@ const Signature = sequelize.define(
       allowNull: true,
     },
     parentId: {
-      type: DataTypes.STRING, 
+      type: DataTypes.UUID,
       allowNull: true,
     },
-    session_id:{
-      type:DataTypes.STRING,
-      allowNull:true
+    session_id: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
     declinedAt: {
       type: DataTypes.DATE,
       allowNull: true,
     },
-    ip_details:{
-      type:DataTypes.JSON,
-      allowNull:true
+    ip_details: {
+      type: DataTypes.JSON,
+      allowNull: true
     },
     messageId: {
       type: DataTypes.STRING,

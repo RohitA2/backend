@@ -75,17 +75,17 @@ const User = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    companyName:{
-      type:DataTypes.STRING,
-      allowNull:true
+    companyName: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
-    fcmToken:{
-      type:DataTypes.STRING,
-      allowNull:true
+    fcmToken: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
-    platform:{
-      type:DataTypes.STRING,
-      allowNull:true
+    platform: {
+      type: DataTypes.STRING,
+      allowNull: true
     },
     resetToken: {
       type: DataTypes.STRING,
@@ -94,7 +94,11 @@ const User = sequelize.define(
     resetTokenExpiry: {
       type: DataTypes.DATE,
       allowNull: true
-    }
+    },
+    companyId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     tableName: "Users",
