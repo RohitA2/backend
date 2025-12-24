@@ -19,6 +19,18 @@ const CompanyDetails = sequelize.define(
         phoneNumber: DataTypes.STRING,
         accountType: DataTypes.STRING,
         taxId: DataTypes.STRING,
+        is_verified: {
+            type: DataTypes.BOOLEAN,
+            defaultValue: false,
+        },
+        is_verified_at: {
+            type: DataTypes.DATE,
+            allowNull: true,
+        },
+        reason: {
+            type: DataTypes.STRING,
+            allowNull: true
+        }
 
     },
     {

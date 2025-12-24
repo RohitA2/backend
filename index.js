@@ -14,7 +14,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-app.use(cors({ origin: ['https:singlink.se','http://localhost:5173','http://localhost:5174'] }));
+app.use(cors({ origin: ['https:singlink.se','http://localhost:5173','http://localhost:5174','http://localhost:5175'] }));
 
 // app.use(express.static("public"));
 app.use('/uploads', express.static(path.join(__dirname, 'src', 'uploads')));

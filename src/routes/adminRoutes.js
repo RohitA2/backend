@@ -10,8 +10,11 @@ router.patch('/users/:id/role', adminController.updateUserRole);
 router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 
-router.get('/proposals',  adminController.allProposals);
-router.put('/proposals/:id',  adminController.updateProposal);
-router.delete('/proposals/:id',  adminController.deleteProposal);
+router.get('/proposals', adminController.allProposals);
+router.put('/proposals/:id', adminController.updateProposal);
+router.delete('/proposals/:id', adminController.deleteProposal);
 
+router.get('/unVerified', adminController.getUnVerifiedCompany)
+router.post('/verify/:companyId', adminController.verifyCompany);
+router.post('/reject/:companyId', adminController.rejectCompany);
 module.exports = router;

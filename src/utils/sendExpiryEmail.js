@@ -12,7 +12,7 @@ const nodemailer = require("nodemailer");
  * @param {string} params.senderName - Sender name
  * @param {string} params.senderEmail - Sender email
  */
-async function sendExpiryEmail({ to, name, proposalName, expirationDate, link, senderName, senderEmail   }) {
+async function sendExpiryEmail({ to, name, proposalName, expirationDate, link, senderName, senderEmail }) {
     try {
         const transporter = nodemailer.createTransport({
             host: "smtp.gmail.com",
@@ -30,7 +30,7 @@ async function sendExpiryEmail({ to, name, proposalName, expirationDate, link, s
             year: "numeric",
         });
 
-                     const html = `
+        const html = `
 <!DOCTYPE html>
 <html>
 <head>

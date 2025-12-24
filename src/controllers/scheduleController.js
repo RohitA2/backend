@@ -298,7 +298,7 @@ exports.scheduleByUserId = async (req, res) => {
     const validSignatures = await db.models.Signature.findAll({
       where: {
         parentId: parentIds,
-        method: ["type", "decline", "BankId", "ip"],
+        method: ["type", "decline", "BankId", "ip", "digital"],
       },
       transaction: t,
     });

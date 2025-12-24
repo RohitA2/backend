@@ -72,10 +72,11 @@ const { Op } = Sequelize;
 
 exports.register = async (req, res) => {
   const transaction = await db.sequelize.transaction();
+
   try {
     const userData = req.body;
 
-    // Check if email already exists
+    // 1️⃣ Check if email already exists
     const where = { email: userData.email };
     const existingUser = await userService.checkExist(db.models.User, where);
 
@@ -97,59 +98,174 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-    // Hash password
+    // 2️⃣ Hash password
     const saltRounds = 10;
     userData.password = await bcrypt.hash(userData.password, saltRounds);
 
-    // Create User
+    // 3️⃣ Create User
     const newUser = await db.models.User.create(userData, { transaction });
 
-    // 👉 Check if company details exist
+    // 4️⃣ Extract company details
     const {
       companyName,
       companySize,
       companyWebsite,
       phoneNumber,
       accountType,
-      taxId
+      taxId,
     } = userData;
 
-    if (
+    const hasCompanyDetails =
       companyName ||
       companySize ||
       companyWebsite ||
       phoneNumber ||
       accountType ||
-      taxId
-    ) {
+      taxId;
+
+    // 5️⃣ Create company details if present
+    if (hasCompanyDetails) {
       await db.models.CompanyDetails.create(
         {
-          userId: newUser.id, // FK
+          userId: newUser.id,
           companyName,
           companySize,
           companyWebsite,
           phoneNumber,
           accountType,
-          taxId
+          taxId,
+          is_verified: false, // 🔴 IMPORTANT
         },
         { transaction }
       );
-    }
 
-    // Send OTP
-    const response = await sendVerificationOtp(newUser, "registration");
-    if (!response.success) {
-      await transaction.rollback();
-      return res.status(400).json(response);
+      // 📧 Send company verification email
+      await sendMail({
+        to: newUser.email,
+        subject: "Company Verification in Progress – SignLink",
+        html: `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Verification in Progress</title>
+    </head>
+    <body style="margin:0; padding:0; background-color:#f9fafb; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb; padding:20px 0;">
+        <tr>
+          <td align="center">
+            <!-- Main Card -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+              <!-- Header -->
+              <tr>
+                <td style="background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding:40px 30px; text-align:center;">
+                  <img 
+                    src="https://signlink.se/images/signlink.png" 
+                    alt="SignLink" 
+                    style="height:40px; max-width:180px; display:block; margin:0 auto 20px;"
+                  />
+                  <h1 style="color:#ffffff; margin:0; font-size:28px; font-weight:600; letter-spacing:-0.5px;">
+                    Verification in Progress
+                  </h1>
+                </td>
+              </tr>
+
+              <!-- Body -->
+              <tr>
+                <td style="padding:40px 40px 30px;">
+                  <p style="font-size:17px; color:#1f2937; margin:0 0 24px; line-height:1.6;">
+                    Hi ${newUser.firstName ? newUser.firstName + ',' : 'there,'}
+                  </p>
+
+                  <p style="font-size:16px; color:#4b5563; margin:0 0 20px; line-height:1.6;">
+                    Thank you for registering your company with <strong>SignLink</strong>! 🎉
+                  </p>
+
+                  <p style="font-size:16px; color:#4b5563; margin:0 0 32px; line-height:1.6;">
+                    We've successfully received your company details, and our team is currently reviewing them to ensure everything is in order.
+                  </p>
+
+                  <div style="background-color:#f3f4f6; border-radius:10px; padding:24px; margin:32px 0;">
+                    <h2 style="font-size:18px; color:#1f2937; margin:0 0 20px; font-weight:600;">
+                      🔍 What happens next?
+                    </h2>
+                    <ul style="margin:0; padding-left:24px; list-style:none; font-size:16px; color:#4b5563; line-height:1.8;">
+                      <li style="position:relative; padding-left:28px; margin-bottom:12px;">
+                        <span style="position:absolute; left:0; top:2px; color:#4f46e5; font-weight:bold; font-size:20px;">✓</span>
+                        Our team carefully verifies your company information
+                      </li>
+                      <li style="position:relative; padding-left:28px; margin-bottom:12px;">
+                        <span style="position:absolute; left:0; top:2px; color:#4f46e5; font-weight:bold; font-size:20px;">✓</span>
+                        Once approved, your account will be fully activated
+                      </li>
+                      <li style="position:relative; padding-left:28px;">
+                        <span style="position:absolute; left:0; top:2px; color:#4f46e5; font-weight:bold; font-size:20px;">✓</span>
+                        You'll receive a confirmation email when everything is ready
+                      </li>
+                    </ul>
+                  </div>
+
+                  <p style="font-size:16px; color:#4b5563; margin:0 0 20px; line-height:1.6;">
+                    This process usually takes 1–3 business days. We'll notify you as soon as your account is active.
+                  </p>
+
+                  <p style="font-size:16px; color:#4b5563; margin:0; line-height:1.6;">
+                    Have questions in the meantime? Feel free to reply to this email or contact our support team.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background-color:#f3f4f6; padding:30px 40px; text-align:center;">
+                  <p style="font-size:14px; color:#6b7280; margin:0 0 16px; line-height:1.5;">
+                    Best regards,<br/>
+                    <strong style="color:#1f2937;">The SignLink Team</strong>
+                  </p>
+                  <p style="font-size:13px; color:#9ca3af; margin:0;">
+                    © ${new Date().getFullYear()} SignLink. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Subtle footer note -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin-top:20px;">
+              <tr>
+                <td style="text-align:center;">
+                  <p style="font-size:12px; color:#9ca3af; margin:0;">
+                    This is an automated message. Please do not reply directly.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `,
+      });
+    } else {
+      // 6️⃣ Send OTP only if NO company verification is needed
+      const response = await sendVerificationOtp(newUser, "registration");
+      if (!response.success) {
+        await transaction.rollback();
+        return res.status(400).json(response);
+      }
     }
 
     await transaction.commit();
 
     return res.status(200).json({
-      message: "User registered successfully",
+      success: true,
+      message: hasCompanyDetails
+        ? "Registration successful. Company verification is in progress."
+        : "User registered successfully. Please verify OTP.",
       user: newUser,
-      otp: response.otp,
       isVerified: false,
+      requiresCompanyApproval: hasCompanyDetails,
     });
   } catch (error) {
     await transaction.rollback();
@@ -157,6 +273,7 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.password = async (req, res) => {
   try {
@@ -188,31 +305,91 @@ exports.password = async (req, res) => {
 };
 
 // Login logic
+// exports.login = async (req, res) => {
+//   const { email, password } = req.body;
+//   // console.log("email is", email);
+
+//   try {
+//     const user = await userService.checkExist(db.models.User, { email },
+//       [
+//         {
+//           model: db.models.CompanyDetails,
+//           required: false, // company optional
+//         },
+//       ]);
+//     if (!user.success) {
+//       return res.status(400).json({ message: "User not found" });
+//     }
+//     const blockStatus = await otpService.checkBlockStatus(user.data);
+//     if (blockStatus.isBlocked !== false) {
+//       return res.status(400).json({ data: blockStatus });
+//     }
+
+//     const isMatch = await bcrypt.compare(password, user.data.password);
+//     if (!isMatch) {
+//       return res.status(400).json({ message: "Invalid credentials" });
+//     }
+
+//     const token = jwt.sign(
+//       { id: user.data.id, role: user.data.role },
+//       process.env.JWT_SECRET,
+//       { expiresIn: process.env.JWT_EXPIRE }
+//     );
+
+//     res.status(200).json({
+//       message: "Login successful",
+//       token,
+//       userId: user.data.id,
+//       user: user.data,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Error logging in" });
+//   }
+// };
+
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  // console.log("email is", email);
 
   try {
-    const user = await userService.checkExist(db.models.User, { email },
+    const user = await userService.checkExist(
+      db.models.User,
+      { email },
       [
         {
           model: db.models.CompanyDetails,
           required: false, // company optional
         },
-      ]);
+      ]
+    );
+
     if (!user.success) {
       return res.status(400).json({ message: "User not found" });
     }
+
+    // 🔐 OTP / block check
     const blockStatus = await otpService.checkBlockStatus(user.data);
     if (blockStatus.isBlocked !== false) {
       return res.status(400).json({ data: blockStatus });
     }
 
+    // ❌ If company exists but not verified → block login
+    if (
+      user.data.CompanyDetail && // company exists
+      user.data.CompanyDetail.is_verified !== true
+    ) {
+      return res.status(403).json({
+        message: "Company is not verified yet. Please wait for approval.",
+      });
+    }
+
+    // 🔑 Password check
     const isMatch = await bcrypt.compare(password, user.data.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    // 🎟️ Generate token
     const token = jwt.sign(
       { id: user.data.id, role: user.data.role },
       process.env.JWT_SECRET,
@@ -225,11 +402,13 @@ exports.login = async (req, res) => {
       userId: user.data.id,
       user: user.data,
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error logging in" });
   }
 };
+
 
 exports.resetPasswordOtp = async (req, res) => {
   const { email, otp, newPassword } = req.body; // Get email, OTP, and newPassword from request body

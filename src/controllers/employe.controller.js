@@ -81,6 +81,13 @@ exports.createUser = async (req, res) => {
  */
 exports.getUsers = async (req, res) => {
     const companyId = req.params.id;
+
+    if (!companyId || companyId === "null") {
+        return res.status(400).json({
+            success: false,
+            message: "Company ID is required"
+        });
+    }
     //   console.log(
     //     "🚀 ~ file: employe.controller.js ~ getUsers ~ companyId:",
     //     companyId
@@ -180,76 +187,76 @@ exports.deleteUser = async (req, res) => {
 
 
 exports.getProposalsByCompanyId = async (req, res) => {
-  try {
-    // ✅ FIX 1
-    const companyId = req.params.companyId;
-    // console.log("Company ID:", companyId);
+    try {
+        // ✅ FIX 1
+        const companyId = req.params.companyId;
+        // console.log("Company ID:", companyId);
 
-    const parents = await db.models.Parent.findAll({
-      where: { companyId },
-      attributes: ["id", "title","user_id"],
-      include: [
-        {
-          model: db.models.ProposalEmail,
-          as: "proposals",
-          attributes: [
-            "id",
-            "proposal_name",
-            "from_name",
-            "from_email",
-            "expiration_date",
-            "link",
-            "created_at",
-          ],
-          include: [
-            // 🟢 Sender
-            {
-              model: db.models.User, // ✅ FIX 2
-              as: "user",
-              attributes: ["id", "firstName", "lastName", "email"],
-            },
+        const parents = await db.models.Parent.findAll({
+            where: { companyId },
+            attributes: ["id", "title", "user_id"],
+            include: [
+                {
+                    model: db.models.ProposalEmail,
+                    as: "proposals",
+                    attributes: [
+                        "id",
+                        "proposal_name",
+                        "from_name",
+                        "from_email",
+                        "expiration_date",
+                        "link",
+                        "created_at",
+                    ],
+                    include: [
+                        // 🟢 Sender
+                        {
+                            model: db.models.User, // ✅ FIX 2
+                            as: "user",
+                            attributes: ["id", "firstName", "lastName", "email"],
+                        },
 
-            // 🟢 Recipients
-            {
-              model: db.models.ProposalEmailRecipient,
-              as: "recipients",
-              attributes: [
-                "recipient_name",
-                "recipient_email",
-                "status",
-                "sent_at",
-              ],
-            },
+                        // 🟢 Recipients
+                        {
+                            model: db.models.ProposalEmailRecipient,
+                            as: "recipients",
+                            attributes: [
+                                "recipient_name",
+                                "recipient_email",
+                                "status",
+                                "sent_at",
+                            ],
+                        },
 
-            // 🟢 Signatures
-            {
-              model: db.models.Signature,
-              as: "signatures",
-              attributes: [
-                "status",
-                "method",
-                "comment",
-                "declinedAt",
-                "createdAt",
-              ],
-              required: false,
-            },
-          ],
-        },
-      ],
-      order: [["created_at", "DESC"]],
-    });
+                        // 🟢 Signatures
+                        {
+                            model: db.models.Signature,
+                            as: "signatures",
+                            attributes: [
+                                "status",
+                                "method",
+                                "comment",
+                                "declinedAt",
+                                "createdAt",
+                            ],
+                            required: false,
+                        },
+                    ],
+                },
+            ],
+            order: [["created_at", "DESC"]],
+        });
 
-    return res.status(200).json({
-      success: true,
-      data: parents,
-    });
-  } catch (error) {
-    console.error("Error fetching proposals:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+        return res.status(200).json({
+            success: true,
+            data: parents,
+        });
+    } catch (error) {
+        console.error("Error fetching proposals:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message,
+        });
+    }
 };
 
