@@ -8,7 +8,7 @@ exports.uploadFile = (req, res) => {
     return res.status(400).json({ error: "No file uploaded" });
   }
 
-  const fileUrl = `${process.env.BASE_URL || "http://localhost:5000"}/uploads/${req.file.filename}`;
+  const fileUrl = `${process.env.BASE_URL || "http://localhost:5000"}/${req.file.filename}`;
 
   console.log("i am from ", fileUrl);
 

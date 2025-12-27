@@ -202,9 +202,9 @@ const { createNotification } = require("../utils/notify"); // Adjust path as nee
 
 exports.sendProposalEmail = async (req, res) => {
   try {
-    const { headerId, userId, name, from, to, expirationDate, link, parentId } = req.body;
+    const { headerId, userId, name, from, to, expirationDate, link, parentId, is_template, template_data, template_name } = req.body;
 
-    console.log("📩 Sending proposal email:", { headerId, userId, name, from, to, expirationDate, link, parentId });
+    console.log("📩 Sending proposal email:", { headerId, userId, name, from, to, expirationDate, link, parentId, is_template, template_data, template_name });
 
     // ✅ Basic validation
     if (!userId || !name || !from || !to || !link || !parentId)
@@ -281,7 +281,12 @@ exports.sendProposalEmail = async (req, res) => {
       expirationDate: expirationDate || null,
       link,
       status: "processing", // initially "processing"
+      isTemplate: is_template,
+      templateData: template_data,
+      templateName: template_name
     });
+
+    console.log("i am from after creation :", proposalEmail);
 
     // ✅ 3. Setup transporter
     const transporter = nodemailer.createTransport({
