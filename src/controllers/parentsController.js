@@ -2,16 +2,38 @@
 const db = require("../config/database");
 const { sequelize } = require("../config/database");
 
+// exports.createParent = async (req, res) => {
+//   try {
+//     const { user_id, company_id } = req.body || {};
+//     console.log(
+//       "userId +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
+//       user_id
+//     );
+
+//     const parent = await db.models.Parent.create({ user_id, companyId: company_id });
+//     res.status(201).json({ id: parent.id });
+//   } catch (e) {
+//     console.error("Failed to create parent:", e);
+//     res.status(500).json({ message: "Failed to create parent" });
+//   }
+// };
+
+
 exports.createParent = async (req, res) => {
   try {
-    const { user_id, company_id } = req.body || {};
-    console.log(
-      "userId +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
-      user_id
-    );
+    let { user_id, company_id } = req.body || {};
 
-    const parent = await db.models.Parent.create({ user_id, companyId: company_id });
-    res.status(201).json({ id: parent.id });
+    // 🔥 Convert "null" string → actual null
+    if (company_id === "null" || company_id === undefined) {
+      company_id = null;
+    }
+
+    const parent = await db.models.Parent.create({
+      user_id,
+      company_id, // ✅ correct column name
+    });
+
+    res.status(201).json({ message:"Parent Created Succesfully",id: parent.id });
   } catch (e) {
     console.error("Failed to create parent:", e);
     res.status(500).json({ message: "Failed to create parent" });
