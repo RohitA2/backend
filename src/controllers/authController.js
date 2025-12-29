@@ -572,7 +572,7 @@ exports.logout = (req, res) => {
 // Update user profile
 exports.updateProfile = async (req, res) => {
   const userData = req.body;
-  // console.log("User Data:++++++++++++++++++++++++++++", userData);
+  console.log("User Data:++++++++++++++++++++++++++++", userData);
 
   try {
     const user = await userService.checkExist(db.models.User, req.user.id);

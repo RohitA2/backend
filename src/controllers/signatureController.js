@@ -5,32 +5,32 @@ const nodemailer = require("nodemailer");
 
 // ✅ Create new signature entry when block is dropped
 exports.createSignature = async (req, res) => {
-  try {
-    const { blockId, parentId } = req.body;
-    console.log(" i am from signature blockId:", blockId, parentId);
+    try {
+        const { blockId, parentId } = req.body;
+        console.log(" i am from signature blockId:", blockId, parentId);
 
-    if (!blockId) {
-      return res.status(400).json({ error: "blockId is required" });
+        if (!blockId) {
+            return res.status(400).json({ error: "blockId is required" });
+        }
+
+        const newSignature = await db.models.Signature.create({
+            blockId,
+            parentId,
+        });
+        res.json({ success: true, data: newSignature });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
-
-    const newSignature = await db.models.Signature.create({
-      blockId,
-      parentId,
-    });
-    res.json({ success: true, data: newSignature });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 };
 
 // ✅ Get all signatures 
 exports.getSignatures = async (req, res) => {
-  try {
-    const signatures = await db.models.Signature.findAll();
-    res.json({ success: true, data: signatures });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    try {
+        const signatures = await db.models.Signature.findAll();
+        res.json({ success: true, data: signatures });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 };
 
 // exports.updateSignatureStatus = async (req, res) => {
@@ -135,122 +135,122 @@ exports.getSignatures = async (req, res) => {
 // };
 
 exports.updateSignatureStatus = async (req, res) => {
-  try {
-    const {
-      signature_method: method,  // Map 'signature_method' from body to 'method'
-      signature,
-      comment,
-      user_id,
-      parent_id,
-      recipient_email,
-      recipient_name,
-      ip_details,
-      session_id,  // Optional: Add if needed for uniqueness validation
-    } = req.body;
-    const { id: blockId } = req.params; // blockId passed in URL
+    try {
+        const {
+            signature_method: method,  // Map 'signature_method' from body to 'method'
+            signature,
+            comment,
+            user_id,
+            parent_id,
+            recipient_email,
+            recipient_name,
+            ip_details,
+            session_id,  // Optional: Add if needed for uniqueness validation
+        } = req.body;
+        const { id: blockId } = req.params; // blockId passed in URL
 
-    console.log("Request body from signature controller:", req.body);
-    console.log("Mapped method:", method);  // Debug: Confirm mapping
+        console.log("Request body from signature controller:", req.body);
+        console.log("Mapped method:", method);  // Debug: Confirm mapping
 
-    // Early input validation
-    if (!blockId) {
-      return res.status(400).json({ error: "Block ID is required in URL params." });
-    }
-    if (!method) {
-      return res.status(400).json({ error: "Signature method is required (sent as 'signature_method' in body)." });
-    }
-    if (!user_id) {
-      return res.status(400).json({ error: "User ID is required." });
-    }
-
-    // 1️⃣ Find signature record by blockId
-    const signatureRecord = await db.models.Signature.findOne({
-      where: { blockId },
-    });
-
-    console.log("signatureRecord:", signatureRecord);
-
-    if (!signatureRecord) {
-      return res.status(404).json({ error: "Signature record not found" });
-    }
-
-    // 2️⃣ Prevent double signing / decline (enhanced with session_id if provided)
-    if (signatureRecord.status === true && signatureRecord.method !== "decline") {
-      return res.status(400).json({ error: "Already signed, cannot update again." });
-    }
-    if (signatureRecord.method === "decline") {
-      return res.status(400).json({ error: "Already declined, cannot update again." });
-    }
-
-    // Optional: Previously signed check using session_id (if available)
-    if (session_id && method !== "decline") {
-      const alreadySigned = await db.models.Signature.findOne({
-        where: {
-          blockId,
-          session_id,
-          status: true,
-          method: { [db.Op.ne]: "decline" }
+        // Early input validation
+        if (!blockId) {
+            return res.status(400).json({ error: "Block ID is required in URL params." });
         }
-      });
-      if (alreadySigned) {
-        return res.status(409).json({ error: "Already signed for this session/block." });
-      }
-    }
+        if (!method) {
+            return res.status(400).json({ error: "Signature method is required (sent as 'signature_method' in body)." });
+        }
+        if (!user_id) {
+            return res.status(400).json({ error: "User ID is required." });
+        }
 
-    // 3️⃣ Method-specific validation
-    if (method === "draw" && !signature) {
-      return res.status(400).json({ error: "Signature image is required." });
-    }
-    if (method === "type" && !signature?.trim()) {
-      return res.status(400).json({ error: "Typed name is required." });
-    }
-    if (method === "decline" && !comment?.trim()) {
-      return res.status(400).json({ error: "Decline reason is required." });
-    }
-    if (method === "ip" && (!ip_details || typeof ip_details !== "object" || Object.keys(ip_details).length === 0)) {
-      return res.status(400).json({ error: "Valid IP details object is required for 'ip' method." });
-    }
+        // 1️⃣ Find signature record by blockId
+        const signatureRecord = await db.models.Signature.findOne({
+            where: { blockId },
+        });
 
-    // 4️⃣ Prepare update payload
-    const updatePayload = {
-      status: method === "decline" ? false : true,
-      method,
-      session_id: session_id || signatureRecord.session_id,  // Preserve or set
-      parentId: parent_id || signatureRecord.parentId,  // From body or existing
-    };
+        console.log("signatureRecord:", signatureRecord);
 
-    // Conditional fields
-    if (method === "decline") {
-      updatePayload.signature = null;
-      updatePayload.comment = comment;
-      updatePayload.declinedAt = new Date();  // Auto-set if declining
-    } else {
-      updatePayload.signature = signature || null;
-      updatePayload.comment = null;  // Clear on successful sign
-    }
+        if (!signatureRecord) {
+            return res.status(404).json({ error: "Signature record not found" });
+        }
 
-    // Handle ip_details (key fix: always set for 'ip', preserve otherwise)
-    if (method === "ip") {
-      updatePayload.ip_details = ip_details;  // Save the full JSON object
-      console.log("Setting ip_details in payload:", ip_details);  // Debug log
-    } else {
-      updatePayload.ip_details = signatureRecord.ip_details;  // Preserve existing
-    }
+        // 2️⃣ Prevent double signing / decline (enhanced with session_id if provided)
+        if (signatureRecord.status === true && signatureRecord.method !== "decline") {
+            return res.status(400).json({ error: "Already signed, cannot update again." });
+        }
+        if (signatureRecord.method === "decline") {
+            return res.status(400).json({ error: "Already declined, cannot update again." });
+        }
 
-    // 5️⃣ Update signature record
-    const updatedRecord = await signatureRecord.update(updatePayload);
-    console.log("Updated record:", updatedRecord);  // Should show ip_details populated
+        // Optional: Previously signed check using session_id (if available)
+        if (session_id && method !== "decline") {
+            const alreadySigned = await db.models.Signature.findOne({
+                where: {
+                    blockId,
+                    session_id,
+                    status: true,
+                    method: { [db.Op.ne]: "decline" }
+                }
+            });
+            if (alreadySigned) {
+                return res.status(409).json({ error: "Already signed for this session/block." });
+            }
+        }
 
-    // 6️⃣ Get sender details
-    const sender = await db.models.User.findByPk(user_id);
+        // 3️⃣ Method-specific validation
+        if (method === "draw" && !signature) {
+            return res.status(400).json({ error: "Signature image is required." });
+        }
+        if (method === "type" && !signature?.trim()) {
+            return res.status(400).json({ error: "Typed name is required." });
+        }
+        if (method === "decline" && !comment?.trim()) {
+            return res.status(400).json({ error: "Decline reason is required." });
+        }
+        if (method === "ip" && (!ip_details || typeof ip_details !== "object" || Object.keys(ip_details).length === 0)) {
+            return res.status(400).json({ error: "Valid IP details object is required for 'ip' method." });
+        }
 
-    if (!sender?.email) {
-      console.warn("Sender email missing, skipping email notification.");
-    } else {
-      // 7️⃣ Prepare email
-      const actionLabel = method === "decline" ? "declined" : "signed";
-      const subject = `Document ${actionLabel} by ${recipient_name || recipient_email || 'Signer'}`;
-      const html = `
+        // 4️⃣ Prepare update payload
+        const updatePayload = {
+            status: true,
+            method,
+            session_id: session_id || signatureRecord.session_id,  // Preserve or set
+            parentId: parent_id || signatureRecord.parentId,  // From body or existing
+        };
+
+        // Conditional fields
+        if (method === "decline") {
+            updatePayload.signature = null;
+            updatePayload.comment = comment;
+            updatePayload.declinedAt = new Date();  // Auto-set if declining
+        } else {
+            updatePayload.signature = signature || null;
+            updatePayload.comment = null;  // Clear on successful sign
+        }
+
+        // Handle ip_details (key fix: always set for 'ip', preserve otherwise)
+        if (method === "ip") {
+            updatePayload.ip_details = ip_details;  // Save the full JSON object
+            console.log("Setting ip_details in payload:", ip_details);  // Debug log
+        } else {
+            updatePayload.ip_details = signatureRecord.ip_details;  // Preserve existing
+        }
+
+        // 5️⃣ Update signature record
+        const updatedRecord = await signatureRecord.update(updatePayload);
+        console.log("Updated record:", updatedRecord);  // Should show ip_details populated
+
+        // 6️⃣ Get sender details
+        const sender = await db.models.User.findByPk(user_id);
+
+        if (!sender?.email) {
+            console.warn("Sender email missing, skipping email notification.");
+        } else {
+            // 7️⃣ Prepare email
+            const actionLabel = method === "decline" ? "declined" : "signed";
+            const subject = `Document ${actionLabel} by ${recipient_name || recipient_email || 'Signer'}`;
+            const html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -524,100 +524,100 @@ exports.updateSignatureStatus = async (req, res) => {
 </html>
 `;
 
-      // 8️⃣ Send email immediately
-      await sendMail({ to: sender.email, subject, html });
-    }
+            // 8️⃣ Send email immediately
+            await sendMail({ to: sender.email, subject, html });
+        }
 
-    // 9️⃣ Return response with updated data
-    return res.json({ success: true, data: updatedRecord });
-  } catch (error) {
-    console.error("statusUpdated error:", error);
-    // Enhanced error handling
-    if (error.name === "SequelizeDatabaseError") {
-      return res.status(400).json({ error: "Database error: Invalid data provided." });
+        // 9️⃣ Return response with updated data
+        return res.json({ success: true, data: updatedRecord });
+    } catch (error) {
+        console.error("statusUpdated error:", error);
+        // Enhanced error handling
+        if (error.name === "SequelizeDatabaseError") {
+            return res.status(400).json({ error: "Database error: Invalid data provided." });
+        }
+        return res.status(500).json({ error: "Failed to update signature" });
     }
-    return res.status(500).json({ error: "Failed to update signature" });
-  }
 };
 exports.getSignatureByBlockId = async (req, res) => {
-  try {
-    const { id } = req.params;
-    console.log(" i am from signatureId:", id);
+    try {
+        const { id } = req.params;
+        console.log(" i am from signatureId:", id);
 
-    const signature = await db.models.Signature.findOne({
-      where: { blockId: id },
-    });
-    if (!signature) return res.status(404).json({ error: "Not found" });
-    res.json({ success: true, data: signature });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        const signature = await db.models.Signature.findOne({
+            where: { blockId: id },
+        });
+        if (!signature) return res.status(404).json({ error: "Not found" });
+        res.json({ success: true, data: signature });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 };
 
 
 exports.DeclineSignature = async (req, res) => {
-  try {
-    const { id: blockId } = req.params;
+    try {
+        const { id: blockId } = req.params;
 
-    const {
-      method,
-      signature,
-      status,
-      comment,
-      receipent_email,   // <-- this is what frontend sends
-      receipent_name     // <-- this too
-    } = req.body;
+        const {
+            method,
+            signature,
+            status,
+            comment,
+            receipent_email,   // <-- this is what frontend sends
+            receipent_name     // <-- this too
+        } = req.body;
 
-    console.log("📩 Incoming DeclineSignature:", req.body);
+        console.log("📩 Incoming DeclineSignature:", req.body);
 
-    // Map spelling to correct variable names
-    const recipient_email = receipent_email;
-    const recipient_name = receipent_name;
+        // Map spelling to correct variable names
+        const recipient_email = receipent_email;
+        const recipient_name = receipent_name;
 
-    // 1️⃣ Find signature record
-    const signatureRecord = await db.models.Signature.findOne({
-      where: { blockId }
-    });
+        // 1️⃣ Find signature record
+        const signatureRecord = await db.models.Signature.findOne({
+            where: { blockId }
+        });
 
-    if (!signatureRecord) {
-      return res.status(404).json({ error: "Signature record not found" });
-    }
+        if (!signatureRecord) {
+            return res.status(404).json({ error: "Signature record not found" });
+        }
 
-    // 2️⃣ Prevent double signing / decline
-    if (signatureRecord.method === "signed") {
-      return res.status(400).json({ error: "Already signed. Cannot update." });
-    }
+        // 2️⃣ Prevent double signing / decline
+        if (signatureRecord.method === "signed") {
+            return res.status(400).json({ error: "Already signed. Cannot update." });
+        }
 
-    if (signatureRecord.method === "decline") {
-      return res.status(400).json({ error: "Already declined earlier." });
-    }
+        if (signatureRecord.method === "decline") {
+            return res.status(400).json({ error: "Already declined earlier." });
+        }
 
-    if (signatureRecord.method === "type") {
-      return res.status(400).json({ error: "Already declined earlier." });
-    }
-    const declinedAt = new Date();
+        if (signatureRecord.method === "type") {
+            return res.status(400).json({ error: "Already declined earlier." });
+        }
+        const declinedAt = new Date();
 
-    // 3️⃣ Update signature record
-    await signatureRecord.update({
-      status: false,
-      signature: null,
-      comment,
-      method,
-      declinedAt
-    });
+        // 3️⃣ Update signature record
+        await signatureRecord.update({
+            status: false,
+            signature: null,
+            comment,
+            method,
+            declinedAt
+        });
 
-    // 4️⃣ SEND MODERN EMAIL NOTIFICATION
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
+        // 4️⃣ SEND MODERN EMAIL NOTIFICATION
+        const transporter = nodemailer.createTransport({
+            host: "smtp.gmail.com",
+            port: 587,
+            secure: false,
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
 
-    const emailHTML = `
+        const emailHTML = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -944,12 +944,12 @@ exports.DeclineSignature = async (req, res) => {
                     <div class="info-item">
                         <span class="info-label">DECLINED AT</span> 
                         <span class="info-value"> ${declinedAt.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })}</span>
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        })}</span>
                     </div>
                 </div>
             </div>
@@ -1010,24 +1010,24 @@ exports.DeclineSignature = async (req, res) => {
 </html>
     `;
 
-    await transporter.sendMail({
-      from: `"SignLink Support" <${process.env.EMAIL_USER}>`,
-      to: recipient_email,
-      subject: "Proposal Declined - ",
-      html: emailHTML
-    });
+        await transporter.sendMail({
+            from: `"SignLink Support" <${process.env.EMAIL_USER}>`,
+            to: recipient_email,
+            subject: "Proposal Declined - ",
+            html: emailHTML
+        });
 
-    console.log("📩  decline email sent successfully!");
+        console.log("📩  decline email sent successfully!");
 
-    return res.json({
-      success: true,
-      message: "Signature declined and  email notification sent."
-    });
+        return res.json({
+            success: true,
+            message: "Signature declined and  email notification sent."
+        });
 
-  } catch (err) {
-    console.error("❌ DeclineSignature Error:", err);
-    return res.status(500).json({ error: err.message });
-  }
+    } catch (err) {
+        console.error("❌ DeclineSignature Error:", err);
+        return res.status(500).json({ error: err.message });
+    }
 };
 
 

@@ -499,6 +499,148 @@ exports.scheduleByUserId = async (req, res) => {
 //   }
 // };
 
+// exports.getProposalsByUserId = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+
+//     const userWithProposals = await db.models.User.findOne({
+//       where: { id },
+//       include: [
+//         {
+//           model: db.models.ProposalEmail,
+//           as: "proposalEmails",
+//           include: [
+//             {
+//               model: db.models.ProposalEmailRecipient,
+//               as: "recipients",
+//               include: [
+//                 {
+//                   model: db.models.Recipient,
+//                   as: "recipientDetails",
+//                   attributes: ["id", "name", "phone"],
+//                 },
+//               ],
+//             },
+//             {
+//               model: db.models.Schedule,
+//               as: "schedules",
+//               required: false,
+//               separate: true, // ensures proper sorting inside include
+//               order: [["createdAt", "DESC"]],
+//             },
+//             {
+//               model: db.models.Signature,
+//               as: "signatures",
+//               separate: true,
+//               order: [["createdAt", "DESC"]],
+//             },
+//           ],
+//           separate: true,
+//           order: [["createdAt", "DESC"]],
+//         },
+//         {
+//           model: db.models.Schedule,
+//           as: "schedules",
+//           required: false,
+//           separate: true,
+//           order: [["createdAt", "DESC"]],
+//         },
+//       ],
+//     });
+
+//     if (!userWithProposals) {
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "User not found" });
+//     }
+
+//     // Group proposals by parentId
+//     const grouped = {};
+//     userWithProposals.proposalEmails.forEach((proposal) => {
+//       const parentId = proposal.parentId || proposal.id;
+
+//       if (!grouped[parentId]) {
+//         grouped[parentId] = {
+//           parentId,
+//           proposals: [],
+//           recipients: [],
+//           schedules: [],
+//           signatures: [],
+//         };
+//       }
+
+//       grouped[parentId].proposals.push({
+//         id: proposal.id,
+//         proposalName: proposal.proposalName,
+//         fromName: proposal.fromName,
+//         fromEmail: proposal.fromEmail,
+//         expirationDate: proposal.expirationDate,
+//         link: proposal.link,
+//         createdAt: proposal.createdAt,
+//       });
+
+//       if (proposal.recipients)
+//         grouped[parentId].recipients.push(
+//           ...proposal.recipients.map((r) => ({
+//             ...r.toJSON(),
+//             recipientDetails: r.recipientDetails || null,
+//           }))
+//         );
+
+//       if (proposal.schedules)
+//         grouped[parentId].schedules.push(...proposal.schedules);
+
+//       if (proposal.signatures)
+//         grouped[parentId].signatures.push(...proposal.signatures);
+//     });
+
+//     // ✅ Sort proposals by createdAt DESC before sending
+//     const sortedGroupedProposals = Object.values(grouped).map((grp) => ({
+//       ...grp,
+//       proposals: grp.proposals.sort(
+//         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//       ),
+//       schedules: grp.schedules.sort(
+//         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//       ),
+//       signatures: grp.signatures.sort(
+//         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//       ),
+//     }));
+
+//     // ✅ Sort parent groups themselves by most recent proposal
+//     sortedGroupedProposals.sort((a, b) => {
+//       const aDate = a.proposals[0]?.createdAt || 0;
+//       const bDate = b.proposals[0]?.createdAt || 0;
+//       return new Date(bDate) - new Date(aDate);
+//     });
+
+//     res.json({
+//       success: true,
+//       user: {
+//         id: userWithProposals.id,
+//         firstName: userWithProposals.firstName,
+//         lastName: userWithProposals.lastName,
+//         email: userWithProposals.email,
+//         companyName: userWithProposals.companyName,
+//       },
+//       groupedProposals: sortedGroupedProposals,
+//       userSchedules:
+//         (userWithProposals.schedules || []).sort(
+//           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//         ),
+//     });
+//   } catch (error) {
+//     console.error("❌ Error fetching proposals:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
 exports.getProposalsByUserId = async (req, res) => {
   try {
     const { id } = req.params;
@@ -525,7 +667,7 @@ exports.getProposalsByUserId = async (req, res) => {
               model: db.models.Schedule,
               as: "schedules",
               required: false,
-              separate: true, // ensures proper sorting inside include
+              separate: true,
               order: [["createdAt", "DESC"]],
             },
             {
@@ -594,16 +736,50 @@ exports.getProposalsByUserId = async (req, res) => {
         grouped[parentId].signatures.push(...proposal.signatures);
     });
 
+    // ✅ Process each group to filter signatures
+    const processedGroupedProposals = Object.values(grouped).map((grp) => {
+      // Remove duplicate signatures (based on signature ID)
+      const uniqueSignatures = [];
+      const seenIds = new Set();
+      
+      grp.signatures.forEach((sig) => {
+        if (!seenIds.has(sig.id)) {
+          seenIds.add(sig.id);
+          uniqueSignatures.push(sig);
+        }
+      });
+
+      // Filter signatures based on your requirements
+      let filteredSignatures = [];
+      if (uniqueSignatures.length > 0) {
+        // Find signatures with status: true
+        const trueStatusSignatures = uniqueSignatures.filter(sig => sig.status === true);
+        
+        if (trueStatusSignatures.length > 0) {
+          // If there are signatures with status: true, return only one (the first one)
+          filteredSignatures = [trueStatusSignatures[0]];
+        } else {
+          // If no signatures with status: true, return only the first signature with status: false
+          const falseStatusSignatures = uniqueSignatures.filter(sig => sig.status === false);
+          if (falseStatusSignatures.length > 0) {
+            filteredSignatures = [falseStatusSignatures[0]];
+          }
+        }
+      }
+
+      return {
+        ...grp,
+        signatures: filteredSignatures,
+      };
+    });
+
     // ✅ Sort proposals by createdAt DESC before sending
-    const sortedGroupedProposals = Object.values(grouped).map((grp) => ({
+    const sortedGroupedProposals = processedGroupedProposals.map((grp) => ({
       ...grp,
       proposals: grp.proposals.sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       ),
       schedules: grp.schedules.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      ),
-      signatures: grp.signatures.sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       ),
     }));
@@ -639,7 +815,6 @@ exports.getProposalsByUserId = async (req, res) => {
     });
   }
 };
-
 
 exports.fcmToken = async (req, res) => {
   try {
