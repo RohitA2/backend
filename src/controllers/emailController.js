@@ -200,11 +200,335 @@ const { createNotification } = require("../utils/notify"); // Adjust path as nee
 // };
 
 
+// second new code ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+// exports.sendProposalEmail = async (req, res) => {
+//   try {
+//     const { headerId, userId, name, from, to, expirationDate, link, parentId, is_template, template_data, template_name } = req.body;
+
+//     console.log("📩 Sending proposal email:", { headerId, userId, name, from, to, expirationDate, link, parentId, is_template, template_data, template_name });
+
+//     // ✅ Basic validation
+//     if (!userId || !name || !from || !to || !link || !parentId)
+//       return res.status(400).json({ error: "Missing required fields" });
+
+//     if (!Array.isArray(to) || to.length === 0)
+//       return res.status(400).json({ error: "Missing recipient emails" });
+
+//     if (!from?.email)
+//       return res.status(400).json({ error: "Missing sender email" });
+
+//     // ✅ 1. Get all schedules under the same parentId
+//     const schedules = await db.models.Schedule.findAll({
+//       where: { parentId },
+//       order: [["date", "ASC"], ["time", "ASC"]],
+//     });
+
+//     // ✅ Enhanced Schedule Table
+//     const scheduleTable =
+//       schedules.length > 0
+//         ? `
+//         <div style="margin: 30px 0;">
+//           <div style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white; padding: 15px 20px; border-radius: 10px 10px 0 0;">
+//             <h3 style="margin: 0; font-size: 18px; display: flex; align-items: center;">
+//               <span style="margin-right: 10px;">📅</span> Meeting Schedule
+//             </h3>
+//           </div>
+//           <div style="overflow-x: auto;">
+//             <table style="width:100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+//               <thead>
+//                 <tr style="background: #f8f9fa;">
+//                   <th style="padding: 12px 15px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Date</th>
+//                   <th style="padding: 12px 15px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Time</th>
+//                   <th style="padding: 12px 15px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Comment</th>
+//                   <th style="padding: 12px 15px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Location</th>
+//                   <th style="padding: 12px 15px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6;">Description</th>
+//                 </tr>
+//               </thead>
+//               <tbody>
+//                 ${schedules
+//           .map(
+//             (s, index) => `
+//                   <tr style="${index % 2 === 0 ? 'background: #f8f9fa;' : 'background: white;'}">
+//                     <td style="padding: 12px 15px; border-bottom: 1px solid #e9ecef; color: #495057; font-weight: 500;">${s.date}</td>
+//                     <td style="padding: 12px 15px; border-bottom: 1px solid #e9ecef; color: #495057;">${s.time}</td>
+//                     <td style="padding: 12px 15px; border-bottom: 1px solid #e9ecef; color: #6c757d;">${s.comment || "-"}</td>
+//                     <td style="padding: 12px 15px; border-bottom: 1px solid #e9ecef; color: #495057;">${s.location || "-"}</td>
+//                     <td style="padding: 12px 15px; border-bottom: 1px solid #e9ecef; color: #6c757d;">${s.description || "-"}</td>
+//                   </tr>
+//                 `
+//           )
+//           .join("")}
+//               </tbody>
+//             </table>
+//           </div>
+//           <p style="color: #6c757d; font-size: 12px; margin: 10px 0 0; text-align: center;">
+//             ${schedules.length} scheduled meeting${schedules.length > 1 ? 's' : ''}
+//           </p>
+//         </div>
+//       `
+//         : `<div style="background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
+//             <span style="font-size: 24px; color: #6c757d;">📅</span>
+//             <p style="color: #6c757d; margin: 10px 0 0;">No scheduled meetings for this proposal.</p>
+//           </div>`;
+
+//     // ✅ 2. Create parent ProposalEmail record
+//     const proposalEmail = await db.models.ProposalEmail.create({
+//       headerId,
+//       parentId,
+//       userId,
+//       proposalName: name,
+//       fromName: from.fullName,
+//       fromEmail: from.email,
+//       expirationDate: expirationDate || null,
+//       link,
+//       status: "processing", // initially "processing"
+//       isTemplate: is_template,
+//       templateData: template_data,
+//       templateName: template_name
+//     });
+
+//     console.log("i am from after creation :", proposalEmail);
+
+//     // ✅ 3. Setup transporter
+//     const transporter = nodemailer.createTransport({
+//       host: "smtp.gmail.com",
+//       port: 465,
+//       secure: true,
+//       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+//     });
+
+//     // ✅ 4. Respond immediately (non-blocking)
+//     res.json({
+//       success: true,
+//       message: "Proposal email(s) are being sent in background.",
+//       schedules: schedules.length,
+//       recipients: to.length,
+//     });
+
+//     // ✅ 5. Background process starts (non-blocking)
+//     (async () => {
+//       try {
+//         let results = [];
+
+//         await Promise.allSettled(
+//           to.map(async (recipient) => {
+//             const token = uuidv4();
+//             const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+//             const recipientLink = `${link}${link.includes("?") ? "&" : "?"}token=${token}`;
+
+//             // ✅ Enhanced HTML Email Template
+//             const htmlBody = `
+// <!DOCTYPE html>
+// <html>
+// <head>
+//     <meta charset="utf-8">
+//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//     <title>New Proposal</title>
+// </head>
+// <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+//     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px;">
+//         <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden;">
+//             <!-- Header -->
+//             <div style="background: linear-gradient(135deg, #007bff 0%, #0056b3 100%); padding: 30px; text-align: center;">
+//                 <div style="background: white; width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+//                     <span style="font-size: 36px; color: #007bff;">📨</span>
+//                 </div>
+//                 <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 700;">New Proposal</h1>
+//                 <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 16px;">Ready for Your Review</p>
+//             </div>
+
+//             <!-- Content -->
+//             <div style="padding: 40px 30px;">
+//                 <!-- Greeting -->
+//                 <div style="margin-bottom: 25px;">
+//                     <h2 style="color: #2c3e50; margin: 0 0 10px; font-size: 22px; font-weight: 600;">Hi ${recipient.name || "there"},</h2>
+//                     <p style="color: #666; margin: 0; line-height: 1.6; font-size: 16px;">
+//                         You've received a new proposal from <strong style="color: #007bff;">${from.fullName}</strong> for your consideration.
+//                     </p>
+//                 </div>
+
+//                 <!-- Proposal Details Card -->
+//                 <div style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; padding: 25px; margin: 25px 0; border-left: 4px solid #007bff;">
+//                     <div style="display: flex; align-items: center; margin-bottom: 20px;">
+//                         <div style="background: #007bff; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-right: 15px;">
+//                             <span style="color: white; font-size: 20px;">📄</span>
+//                         </div>
+//                         <div>
+//                             <h3 style="color: #2c3e50; margin: 0; font-size: 20px; font-weight: 600;">${name}</h3>
+//                             <p style="color: #666; margin: 5px 0 0; font-size: 14px;">Proposal from ${from.fullName}</p>
+//                         </div>
+//                     </div>
+
+//                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+//                         <div style="text-align: center;">
+//                             <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+//                                 <span style="font-size: 20px;">⏰</span>
+//                                 <p style="color: #666; margin: 8px 0 0; font-size: 12px; font-weight: 600;">EXPIRES</p>
+//                                 <p style="color: ${expirationDate ? '#e74c3c' : '#6c757d'}; margin: 5px 0 0; font-size: 14px; font-weight: 700;">
+//                                     ${expirationDate || "No expiry"}
+//                                 </p>
+//                             </div>
+//                         </div>
+//                         <div style="text-align: center;">
+//                             <div style="background: white; padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+//                                 <span style="font-size: 20px;">👤</span>
+//                                 <p style="color: #666; margin: 8px 0 0; font-size: 12px; font-weight: 600;">FROM</p>
+//                                 <p style="color: #2c3e50; margin: 5px 0 0; font-size: 14px; font-weight: 700;">${from.fullName}</p>
+//                             </div>
+//                         </div>
+//                     </div>
+//                 </div>
+
+//                 <!-- Schedule Section -->
+//                 ${scheduleTable}
+
+//                 <!-- Action Button -->
+//                 <div style="text-align: center; margin: 35px 0;">
+//                     <a href="${recipientLink}" target="_blank"
+//                        style="display: inline-block; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 16px 40px; border-radius: 50px; text-decoration: none; font-weight: 700; font-size: 16px; box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3); transition: all 0.3s ease;">
+//                        Review Proposal
+//                     </a>
+//                     <p style="color: #666; margin: 15px 0 0; font-size: 14px;">
+//                         Click above to view the complete proposal details and take action
+//                     </p>
+//                 </div>
+
+//                 <!-- Important Note -->
+//                 <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 25px 0;">
+//                     <div style="display: flex; align-items: flex-start;">
+//                         <span style="font-size: 16px; color: #856404; margin-right: 10px;">💡</span>
+//                         <div>
+//                             <p style="color: #856404; margin: 0 0 5px; font-size: 14px; font-weight: 600;">Important</p>
+//                             <p style="color: #856404; margin: 0; font-size: 13px; line-height: 1.4;">
+//                                 Please review this proposal before the expiration date. Your timely response is appreciated.
+//                             </p>
+//                         </div>
+//                     </div>
+//                 </div>
+//             </div>
+
+//             <!-- Footer -->
+//             <div style="background: #f8f9fa; padding: 25px 30px; text-align: center; border-top: 1px solid #e9ecef;">
+//                 <div style="margin-bottom: 15px;">
+//                     <span style="color: #6c757d; font-size: 12px; display: block; margin-bottom: 5px;">Proposal ID: ${parentId}</span>
+//                     <span style="color: #6c757d; font-size: 12px;">Sent by ${from.fullName} • ${from.email}</span>
+//                 </div>
+//                 <div style="border-top: 1px solid #dee2e6; padding-top: 15px;">
+//                     <p style="color: #999; margin: 0; font-size: 11px;">
+//                         © ${new Date().getFullYear()} SignLink. All rights reserved.<br>
+//                         This email was sent automatically. Please do not reply to this message.
+//                     </p>
+//                 </div>
+//             </div>
+//         </div>
+//     </div>
+// </body>
+// </html>
+//             `;
+
+//             try {
+//               await transporter.sendMail({
+//                 from: `"${from.fullName}" <${process.env.EMAIL_USER}>`,
+//                 to: recipient.email,
+//                 replyTo: from.email,
+//                 subject: `Proposal: ${name}`,
+//                 html: htmlBody,
+//               });
+
+//               await db.models.ProposalEmailRecipient.create({
+//                 proposalEmailId: proposalEmail.id,
+//                 recipientId: recipient.id,
+//                 recipientName: recipient.name || "",
+//                 recipientEmail: recipient.email,
+//                 sentAt: new Date(),
+//                 status: "sent",
+//                 token,
+//                 tokenExpires,
+//               });
+
+//               results.push({ email: recipient.email, status: "sent" });
+//             } catch (err) {
+//               console.error("❌ Failed to send email to", recipient.email, err.message);
+//               await db.models.ProposalEmailRecipient.create({
+//                 proposalEmailId: proposalEmail.id,
+//                 recipientId: recipient.id,
+//                 recipientName: recipient.name || "",
+//                 recipientEmail: recipient.email,
+//                 sentAt: new Date(),
+//                 status: "failed",
+//                 errorMessage: err.message,
+//                 token,
+//                 tokenExpires,
+//               });
+//               results.push({ email: recipient.email, status: "failed" });
+//             }
+//           })
+//         );
+
+//         // ✅ Update status & send notification
+//         const sentCount = results.filter((r) => r.status === "sent").length;
+//         const failedCount = results.filter((r) => r.status === "failed").length;
+//         const msg = `Proposal "${name}" sent to ${sentCount} recipient(s). ${failedCount > 0 ? `${failedCount} failed.` : ""}`;
+
+//         await proposalEmail.update({ status: failedCount > 0 ? "failed" : "sent" });
+
+//         await createNotification({
+//           title: "Proposal Sent",
+//           message: msg,
+//           type: failedCount > 0 ? "warning" : "success",
+//           userId,
+//         });
+
+//         console.log("✅ Background email sending completed:", msg);
+//       } catch (err) {
+//         console.error("💥 Background process failed:", err);
+//         await proposalEmail.update({ status: "failed" });
+//         await createNotification({
+//           title: "Proposal Sending Failed",
+//           message: `Proposal "${name}" failed due to server error.`,
+//           type: "error",
+//           userId,
+//         });
+//       }
+//     })(); // End background async IIFE
+
+//   } catch (err) {
+//     console.error("💥 Email sending error:", err);
+//     res.status(500).json({ error: "Failed to process proposal email request" });
+//   }
+// };
+
+
+// first  new code ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 exports.sendProposalEmail = async (req, res) => {
   try {
-    const { headerId, userId, name, from, to, expirationDate, link, parentId, is_template, template_data, template_name } = req.body;
+    const {
+      headerId,
+      userId,
+      name,
+      from,
+      to,
+      expirationDate,
+      link,
+      parentId,
+      is_template = false,
+      template_data,
+      template_name,
+    } = req.body;
 
-    console.log("📩 Sending proposal email:", { headerId, userId, name, from, to, expirationDate, link, parentId, is_template, template_data, template_name });
+    console.log("📩 Sending proposal email:", {
+      headerId,
+      userId,
+      name,
+      from,
+      to,
+      expirationDate,
+      link,
+      parentId,
+      is_template,
+      template_name,
+    });
 
     // ✅ Basic validation
     if (!userId || !name || !from || !to || !link || !parentId)
@@ -216,13 +540,23 @@ exports.sendProposalEmail = async (req, res) => {
     if (!from?.email)
       return res.status(400).json({ error: "Missing sender email" });
 
+    // ✅ Template validation (only if saving as template)
+    if (is_template) {
+      if (!template_name?.trim()) {
+        return res.status(400).json({ error: "Template name is required when saving as template" });
+      }
+      if (!template_data || typeof template_data !== "object") {
+        return res.status(400).json({ error: "Template data is required when saving as template" });
+      }
+    }
+
     // ✅ 1. Get all schedules under the same parentId
     const schedules = await db.models.Schedule.findAll({
       where: { parentId },
       order: [["date", "ASC"], ["time", "ASC"]],
     });
 
-    // ✅ Enhanced Schedule Table
+    // ✅ Enhanced Schedule Table (unchanged)
     const scheduleTable =
       schedules.length > 0
         ? `
@@ -270,7 +604,18 @@ exports.sendProposalEmail = async (req, res) => {
             <p style="color: #6c757d; margin: 10px 0 0;">No scheduled meetings for this proposal.</p>
           </div>`;
 
-    // ✅ 2. Create parent ProposalEmail record
+    // ✅ 2. Save template first (synchronous - quick operation)
+    let newTemplate = null;
+    if (is_template) {
+      newTemplate = await db.models.ProposalTemplate.create({
+        userId,
+        name: template_name.trim(),
+        data: template_data,
+      });
+      console.log(`✅ Template "${template_name}" saved successfully (ID: ${newTemplate.id})`);
+    }
+
+    // ✅ 3. Create parent ProposalEmail record (no template fields anymore)
     const proposalEmail = await db.models.ProposalEmail.create({
       headerId,
       parentId,
@@ -281,14 +626,11 @@ exports.sendProposalEmail = async (req, res) => {
       expirationDate: expirationDate || null,
       link,
       status: "processing", // initially "processing"
-      isTemplate: is_template,
-      templateData: template_data,
-      templateName: template_name
     });
 
-    console.log("i am from after creation :", proposalEmail);
+    console.log("ProposalEmail created:", proposalEmail.id);
 
-    // ✅ 3. Setup transporter
+    // ✅ 4. Setup transporter
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
       port: 465,
@@ -296,15 +638,17 @@ exports.sendProposalEmail = async (req, res) => {
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
     });
 
-    // ✅ 4. Respond immediately (non-blocking)
+    // ✅ 5. Respond immediately (non-blocking)
     res.json({
       success: true,
       message: "Proposal email(s) are being sent in background.",
       schedules: schedules.length,
       recipients: to.length,
+      templateId: newTemplate.id,
+      templateSaved: is_template,
     });
 
-    // ✅ 5. Background process starts (non-blocking)
+    // ✅ 6. Background process starts (non-blocking)
     (async () => {
       try {
         let results = [];
@@ -315,7 +659,7 @@ exports.sendProposalEmail = async (req, res) => {
             const tokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
             const recipientLink = `${link}${link.includes("?") ? "&" : "?"}token=${token}`;
 
-            // ✅ Enhanced HTML Email Template
+            // ✅ HTML Email Template (unchanged)
             const htmlBody = `
 <!DOCTYPE html>
 <html>
@@ -469,7 +813,7 @@ exports.sendProposalEmail = async (req, res) => {
         const failedCount = results.filter((r) => r.status === "failed").length;
         const msg = `Proposal "${name}" sent to ${sentCount} recipient(s). ${failedCount > 0 ? `${failedCount} failed.` : ""}`;
 
-        await proposalEmail.update({ status: failedCount > 0 ? "failed" : "sent" });
+        await proposalEmail.update({ status: failedCount > 0 ? "partial" : "sent" });
 
         await createNotification({
           title: "Proposal Sent",

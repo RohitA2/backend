@@ -54,11 +54,11 @@ const authMiddleware = (req, res, next) => {
 
     // 3️⃣ Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded JWT:", decoded);
+    // console.log("Decoded JWT:", decoded);
 
     // 4️⃣ Attach user info
     req.user = decoded;
-    console.log(`Authenticated user ID: ${decoded.id}`);
+    // console.log(`Authenticated user ID: ${decoded.id}`);
 
     next();
   } catch (error) {
