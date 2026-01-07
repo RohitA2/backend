@@ -1031,3 +1031,84 @@ exports.DeclineSignature = async (req, res) => {
 };
 
 
+
+exports.UserSelfSign = async (req, res) => {
+
+    try {
+        const {
+            parentId,
+            blockId,
+            status,
+            method,
+            comment,
+            userId
+        } = req.body;
+
+        // 🔴 Basic validation
+        if (!parentId) {
+            return res.status(400).json({
+                success: false,
+                message: "parentId is required"
+            });
+        }
+
+        if (typeof status !== "boolean") {
+            return res.status(400).json({
+                success: false,
+                message: "status must be boolean"
+            });
+        }
+
+        // Normalize values (important!)
+        const cleanBlockId = blockId || null;
+        const cleanComment = comment || null;
+
+        // 🔍 Find existing signature
+        const existingSignature = await db.models.Signature.findOne({
+            where: {
+                parentId,
+                blockId: cleanBlockId
+            }
+        });
+
+        let signature;
+
+        if (existingSignature) {
+            // ✅ UPDATE
+            signature = await existingSignature.update({
+                status,
+                method,
+                comment: cleanComment,
+                declinedAt: method === "decline" ? new Date() : null,
+                user_id: userId
+            });
+        } else {
+            // ✅ CREATE
+            signature = await db.models.Signature.create({
+                parentId,
+                blockId: cleanBlockId,
+                status,
+                method,
+                comment: cleanComment,
+                declinedAt: method === "decline" ? new Date() : null,
+                user_id: userId
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Signature status updated successfully",
+            data: signature
+        });
+
+    } catch (error) {
+        console.error("updateSignatureStatus error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update signature",
+            error: error.message
+        });
+    }
+};
+

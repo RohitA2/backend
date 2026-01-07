@@ -1,6 +1,8 @@
 // controllers/parentsController.js
 const db = require("../config/database");
 const { sequelize } = require("../config/database");
+const { Op } = require("sequelize");
+const Sequelize = require("sequelize");
 
 // exports.createParent = async (req, res) => {
 //   try {
@@ -33,7 +35,7 @@ exports.createParent = async (req, res) => {
       company_id, // ✅ correct column name
     });
 
-    res.status(201).json({ message:"Parent Created Succesfully",id: parent.id });
+    res.status(201).json({ message: "Parent Created Succesfully", id: parent.id });
   } catch (e) {
     console.error("Failed to create parent:", e);
     res.status(500).json({ message: "Failed to create parent" });
@@ -210,5 +212,161 @@ exports.getBlocks = async (req, res) => {
   } catch (e) {
     console.error("Failed to fetch blocks:", e);
     return res.status(500).json({ message: "Failed to fetch blocks" });
+  }
+};
+
+
+
+/**
+ * ✅ GET DRAFT PROPOSALS
+ * Draft = Parent with NO proposal_emails
+ */
+exports.getDraftProposals = async (req, res) => {
+  try {
+    const { userId, companyId } = req.query;
+
+    // 🔹 Pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const offset = (page - 1) * limit;
+
+    const whereClause = {
+      "$proposals.id$": { [Op.is]: null }, // UNSENT = DRAFT
+    };
+
+    if (userId) whereClause.user_id = userId;
+    if (companyId) whereClause.companyId = companyId;
+
+    const drafts = await db.models.Parent.findAll({
+      where: whereClause,
+      attributes: {
+        include: [
+          [Sequelize.fn("COUNT", Sequelize.col("blocks.id")), "blockCount"],
+        ],
+      },
+      include: [
+        {
+          model: db.models.ProposalEmail,
+          as: "proposals",
+          required: false,
+          attributes: [],
+        },
+        {
+          model: db.models.Block,
+          as: "blocks",
+          required: false,
+          attributes: [],
+        },
+      ],
+      group: ["Parent.id"],
+      having: Sequelize.literal(`COUNT("blocks"."id") > 0`),
+      order: [["created_at", "DESC"]],
+      limit,
+      offset,
+      subQuery: false,
+      distinct: true,
+    });
+
+    // 🔹 Total count (for pagination UI)
+    const totalCountResult = await db.models.Parent.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: db.models.Block,
+          as: "blocks",
+          required: true,
+          attributes: [],
+        },
+        {
+          model: db.models.ProposalEmail,
+          as: "proposals",
+          required: false,
+          attributes: [],
+        },
+      ],
+      group: ["Parent.id"],
+      having: Sequelize.literal(`COUNT("blocks"."id") > 0`),
+    });
+
+    const total = totalCountResult.length;
+
+    // 🔹 fetch blocks separately (keeps correct ordering)
+    const parentIds = drafts.map((d) => d.id);
+
+    const blocks = await db.models.Block.findAll({
+      where: { parentId: parentIds },
+      order: [["order_index", "ASC"]],
+    });
+
+    // 🔹 attach blocks back
+    const blocksMap = {};
+    blocks.forEach((b) => {
+      if (!blocksMap[b.parentId]) blocksMap[b.parentId] = [];
+      blocksMap[b.parentId].push(b);
+    });
+
+    const result = drafts.map((d) => ({
+      ...d.toJSON(),
+      blocks: blocksMap[d.id] || [],
+    }));
+
+    return res.status(200).json({
+      success: true,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data: result,
+    });
+  } catch (error) {
+    console.error("Error fetching draft proposals:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch draft proposals",
+    });
+  }
+};
+
+/**
+ * ❌ DELETE DRAFT PROPOSAL
+ * Only deletes if proposal is still a draft (unsent)
+ */
+exports.deleteDraftProposal = async (req, res) => {
+  try {
+    const { parentId } = req.params;
+
+    // Check if proposal has been sent
+    const sentCount = await db.models.ProposalEmail.count({
+      where: { parentId },
+    });
+
+    if (sentCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete. Proposal already sent.",
+      });
+    }
+
+    const deleted = await db.models.Parent.destroy({
+      where: { id: parentId },
+    });
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Draft proposal not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Draft proposal deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting draft proposal:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete draft proposal",
+    });
   }
 };

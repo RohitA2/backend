@@ -17,4 +17,7 @@ router.get("/:parentId/block-ids", parentsController.getBlockIds);
 // Get all blocks
 router.get("/:parentId/blocks", parentsController.getBlocks);
 
+
+router.get("/draft",parentsController.getDraftProposals)
+
 module.exports = router;

@@ -46,8 +46,8 @@ const Signature = sequelize.define(
       type: DataTypes.JSON,
       allowNull: true
     },
-    messageId: {
-      type: DataTypes.STRING,
+    user_id: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
   },

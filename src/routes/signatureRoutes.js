@@ -5,7 +5,8 @@ const {
   getSignatures,
   updateSignatureStatus,
   getSignatureByBlockId,
-  DeclineSignature
+  DeclineSignature,
+  UserSelfSign
 } = require("../controllers/signatureController");
 
 // Routes
@@ -14,5 +15,6 @@ router.get("/sign/:id", getSignatureByBlockId);
 router.get("/:id", getSignatures);
 router.post("/:id", updateSignatureStatus);
 router.put("/decline/:id", DeclineSignature);
+router.post("/self/status", UserSelfSign);
 
 module.exports = router;

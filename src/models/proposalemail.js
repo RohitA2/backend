@@ -31,18 +31,7 @@ const ProposalEmail = sequelize.define(
     link: {
       type: DataTypes.TEXT,
     },
-    // isTemplate:{
-    //   type:DataTypes.BOOLEAN,
-    //   defaultValue: false
-    // },
-    // templateName:{
-    //   type:DataTypes.STRING,
-    //   allowNull:true
-    // },
-    // templateData:{
-    //   type:DataTypes.JSON,
-    //   allowNull:true
-    // }
+
   },
   {
     tableName: "proposal_emails",

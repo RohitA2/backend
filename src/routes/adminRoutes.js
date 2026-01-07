@@ -10,6 +10,15 @@ router.patch('/users/:id/role', adminController.updateUserRole);
 router.put('/users/:id', adminController.updateUser);
 router.delete('/users/:id', adminController.deleteUser);
 
+router.get('/allClients', adminController.allClients);
+router.get('/clients/:id', adminController.getClient);
+router.post('/clients', adminController.createClient);
+router.put('/clients/:id', adminController.updateClient);
+router.patch('/clients/:id/status', adminController.updateClientStatus);
+router.patch('/clients/:id/verify', adminController.verifyCompany);
+router.delete('/clients/:id', adminController.deleteClient);
+router.post('/clients/bulk-update', adminController.bulkUpdateClients);
+
 router.get('/proposals', adminController.allProposals);
 router.put('/proposals/:id', adminController.updateProposal);
 router.delete('/proposals/:id', adminController.deleteProposal);
