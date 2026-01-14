@@ -1,5 +1,24 @@
 // utils/sendExpiryEmail.js
-const nodemailer = require("nodemailer");
+// const nodemailer = require("nodemailer");
+
+/**
+ * Send expiry reminder email using SendGrid
+ * Forced CommonJS (.cjs) to avoid ESM issues
+ */
+
+let sgMail;
+
+/**
+ * Lazy-load SendGrid (ESM-safe inside CommonJS)
+ */
+async function getSendGrid() {
+    if (!sgMail) {
+        const module = await import("@sendgrid/mail");
+        sgMail = module.default;
+        sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    }
+    return sgMail;
+}
 
 /**
  * Send expiry reminder email with link
@@ -14,15 +33,15 @@ const nodemailer = require("nodemailer");
  */
 async function sendExpiryEmail({ to, name, proposalName, expirationDate, link, senderName, senderEmail }) {
     try {
-        const transporter = nodemailer.createTransport({
-            host: "smtp.gmail.com",
-            port: 465,
-            secure: true,
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,
-            },
-        });
+        // const transporter = nodemailer.createTransport({
+        //     host: "smtp.gmail.com",
+        //     port: 465,
+        //     secure: true,
+        //     auth: {
+        //         user: process.env.EMAIL_USER,
+        //         pass: process.env.EMAIL_PASS,
+        //     },
+        // });
 
         const formattedDate = new Date(expirationDate).toLocaleDateString("en-IN", {
             day: "2-digit",
@@ -138,13 +157,24 @@ async function sendExpiryEmail({ to, name, proposalName, expirationDate, link, s
 </html>
 `;
 
-        await transporter.sendMail({
-            from: `"Proposal System" <${process.env.EMAIL_USER}>`,
+        // await transporter.sendMail({
+        //     from: `"Proposal System" <${process.env.EMAIL_USER}>`,
+        //     to,
+        //     subject: `Reminder: ${proposalName} is expiring soon`,
+        //     html,
+        // });
+
+        const mailer = await getSendGrid();
+
+        await mailer.send({
             to,
+            from: {
+                email: process.env.SENDGRID_FROM_EMAIL,
+                name: "Proposal System",
+            },
             subject: `Reminder: ${proposalName} is expiring soon`,
             html,
         });
-
         console.log(`📧 Email sent to ${to}`);
     } catch (error) {
         console.error("❌ Failed to send email to", to, ":", error.message);

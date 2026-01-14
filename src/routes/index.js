@@ -27,6 +27,7 @@ const adminRoutes = require("./adminRoutes");
 const notesRoutes = require("./noteRoutes");
 const emRoutes = require("./employe.routes");
 const templateRoutes = require("./templateRoutes");
+const privateRoutes = require("./privateNotesRoutes");
 module.exports = (app) => {
   // Authentication routes for all  
   app.use("/api/users", userRoutes);
@@ -57,4 +58,5 @@ module.exports = (app) => {
   app.use('/notes', notesRoutes);
   app.use('/em', emRoutes);
   app.use("/temp", templateRoutes);
+  app.use("/private", privateRoutes);
 };

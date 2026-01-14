@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
     "bankid": "^3.2.1",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.3",

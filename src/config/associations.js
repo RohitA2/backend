@@ -162,21 +162,47 @@ const defineAssociations = () => {
   });
 
 
- models.Parent.hasMany(models.ProposalEmail, {
-  foreignKey: "parentId",
-  sourceKey: "id",
-  as: "proposals",
-  constraints: false, // 🔥 VERY IMPORTANT
-});
+  models.Parent.hasMany(models.ProposalEmail, {
+    foreignKey: "parentId",
+    sourceKey: "id",
+    as: "proposals",
+    constraints: false, // 🔥 VERY IMPORTANT
+  });
 
-models.ProposalEmail.belongsTo(models.Parent, {
-  foreignKey: "parentId",
-  targetKey: "id",
-  as: "parent",
-  constraints: false, // 🔥 VERY IMPORTANT
-});
+  models.ProposalEmail.belongsTo(models.Parent, {
+    foreignKey: "parentId",
+    targetKey: "id",
+    as: "parent",
+    constraints: false, // 🔥 VERY IMPORTANT
+  });
 
 
+
+  // // Associations
+  // models.PrivateNotes.associate = function (models) {
+  //   models.PrivateNotes.belongsTo(models.User, {
+  //     foreignKey: 'userId',
+  //     as: 'user',
+  //     onDelete: 'CASCADE'
+  //   });
+  //   models.PrivateNotes.belongsTo(models.ProposalEmail, {
+  //     foreignKey: 'parentId',
+  //     as: 'private',
+  //     onDelete: 'CASCADE'
+  //   });
+  // };
+
+
+  // models.PrivateNotes.associate = (models) => {
+  //   models.PrivateNotes.belongsTo(models.User, {
+  //     foreignKey: 'userId',
+  //     as: 'user'
+  //   });
+  //   models.PrivateNotes.belongsTo(models.ProposalEmail, {
+  //     foreignKey: 'parentId',
+  //     as: 'private'
+  //   });
+  // };
 
 };
 
