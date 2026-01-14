@@ -1,6 +1,6 @@
 // Create schedule
 const db = require("../config/database");
-const nodemailer = require("nodemailer");
+// const nodemailer = require("nodemailer");
 const { createNotification } = require("../utils/notify");
 const { Op } = require("sequelize");
 exports.createSchedule = async (req, res) => {
@@ -105,12 +105,169 @@ exports.deleteSchedule = async (req, res) => {
   }
 };
 
+// exports.updateSchedule = async (req, res) => {
+//   const { scheduleId, date, time, comment, description, location } = req.body;
+//   console.log("📩 Incoming update request:", req.body);
+
+//   try {
+//     // Validate required fields
+//     if (!scheduleId || !date || !time) {
+//       return res.status(400).json({
+//         success: false,
+//         error: "Schedule ID, date, and time are required.",
+//       });
+//     }
+
+//     // Validate date and time formats
+//     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+//       return res.status(400).json({ success: false, error: "Invalid date format. Use YYYY-MM-DD." });
+//     }
+//     // Normalize time input
+//     let normalizedTime = time;
+
+//     // If time has more than 2 colons → trim to HH:mm:ss
+//     const timeParts = normalizedTime.split(":");
+
+//     if (timeParts.length >= 2) {
+//       normalizedTime = timeParts.slice(0, 3).join(":");
+//     }
+
+//     // If only HH:mm → append seconds
+//     if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
+//       normalizedTime = `${normalizedTime}:00`;
+//     }
+
+//     // Final validation
+//     if (!/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)) {
+//       return res.status(400).json({
+//         success: false,
+//         error: "Invalid time format. Use HH:mm or HH:mm:ss.",
+//       });
+//     }
+
+
+//     // Find the schedule
+//     const schedule = await db.models.Schedule.findByPk(scheduleId);
+//     if (!schedule) return res.status(404).json({ success: false, error: "Schedule not found." });
+
+//     const parentId = schedule.parentId;
+//     if (!parentId) return res.status(400).json({ success: false, error: "Parent ID not found for this schedule." });
+
+//     // Update the schedule
+//     await schedule.update({
+//       date,
+//       time: normalizedTime,
+//       comment: comment || null,
+//       description: description || null,
+//       location: location || null,
+//     });
+
+//     console.log(`✅ Schedule #${scheduleId} updated successfully.`);
+
+//     // Immediate API response
+//     res.json({
+//       success: true,
+//       message: "Schedule updated successfully. Notifications and emails are being processed in the background.",
+//       schedule,
+//     });
+
+//     // 🔹 Background tasks: Emails + Notifications
+//     (async () => {
+//       try {
+//         const proposalEmail = await db.models.ProposalEmail.findOne({ where: { parentId } });
+//         if (!proposalEmail) {
+//           console.log("⚠️ No proposal email found for parentId:", parentId);
+//           return;
+//         }
+
+//         const recipients = await db.models.ProposalEmailRecipient.findAll({ where: { proposalEmailId: proposalEmail.id } });
+//         if (!recipients.length) {
+//           console.log("⚠️ No recipients found for this proposal.");
+//           return;
+//         }
+
+//         console.log(`📨 Sending notifications and emails to ${recipients.length} recipients in background...`);
+
+//         // Nodemailer setup
+//         const transporter = nodemailer.createTransport({
+//           host: "smtp.gmail.com",
+//           port: 587,
+//           secure: false,
+//           auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+//         });
+
+//         // Email template
+//         const emailTemplate = (recipient) => `
+//           <div style="font-family: Arial,sans-serif; padding: 20px; background: #f4f6f8;">
+//             <div style="max-width:600px;margin:auto;background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.1);padding:25px;">
+//               <h2 style="color:#2c3e50;text-align:center;">📅 Schedule Update Notification</h2>
+//               <p>Dear <b>${recipient.recipientName || "Recipient"}</b>,</p>
+//               <p>The schedule for the proposal <b>${proposalEmail.proposalName}</b> has been updated:</p>
+//               <table style="width:100%;border-collapse:collapse;margin:15px 0;">
+//                 <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Date:</b></td><td>${date}</td></tr>
+//                 <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Time:</b></td><td>${time}</td></tr>
+//                 ${location ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Location:</b></td><td>${location}</td></tr>` : ""}
+//                 ${comment ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Comment:</b></td><td>${comment}</td></tr>` : ""}
+//                 ${description ? `<tr><td style="padding:8px;"><b>Description:</b></td><td>${description}</td></tr>` : ""}
+//               </table>
+//               <p style="text-align:center;margin:20px 0;">
+//                 <a href="${proposalEmail.link}" target="_blank" style="background:#007bff;color:white;padding:10px 18px;border-radius:5px;text-decoration:none;">View Proposal</a>
+//               </p>
+//               <p style="font-size:13px;color:#888;text-align:center;">Best regards,<br><b>${proposalEmail.fromName}</b></p>
+//             </div>
+//           </div>
+//         `;
+
+//         for (const recipient of recipients) {
+//           // Send email
+//           try {
+//             await transporter.sendMail({
+//               from: `"${proposalEmail.fromName}" <${proposalEmail.fromEmail}>`,
+//               to: recipient.recipientEmail,
+//               subject: `🗓️ Schedule Updated: ${proposalEmail.proposalName}`,
+//               html: emailTemplate(recipient),
+//             });
+//             console.log(`📧 Email sent to ${recipient.recipientEmail}`);
+//           } catch (err) {
+//             console.error(`❌ Failed to send email to ${recipient.recipientEmail}:`, err.message);
+//           }
+
+//           // Create in-app notification
+//           try {
+//             await createNotification({
+//               title: "Schedule Updated",
+//               message: `The schedule for proposal "${proposalEmail.proposalName}" has been updated.`,
+//               type: "info",
+//               userId: recipient.recipientId,
+//             });
+//             console.log(`🔔 Notification created for user ${recipient.recipientId}`);
+//           } catch (err) {
+//             console.error(`❌ Failed to create notification for user ${recipient.recipientId}:`, err.message);
+//           }
+//         }
+
+//         console.log("✅ Background emails and notifications task completed.");
+//       } catch (err) {
+//         console.error("💥 Error in background task:", err);
+//       }
+//     })();
+
+//   } catch (error) {
+//     console.error("💥 Error updating schedule:", error);
+//     return res.status(500).json({
+//       success: false,
+//       error: "Internal server error. Please try again later.",
+//     });
+//   }
+// };
+const sgMail = require("@sendgrid/mail");
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
 exports.updateSchedule = async (req, res) => {
   const { scheduleId, date, time, comment, description, location } = req.body;
   console.log("📩 Incoming update request:", req.body);
 
   try {
-    // Validate required fields
     if (!scheduleId || !date || !time) {
       return res.status(400).json({
         success: false,
@@ -118,26 +275,24 @@ exports.updateSchedule = async (req, res) => {
       });
     }
 
-    // Validate date and time formats
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return res.status(400).json({ success: false, error: "Invalid date format. Use YYYY-MM-DD." });
+      return res.status(400).json({
+        success: false,
+        error: "Invalid date format. Use YYYY-MM-DD.",
+      });
     }
-    // Normalize time input
-    let normalizedTime = time;
 
-    // If time has more than 2 colons → trim to HH:mm:ss
+    let normalizedTime = time;
     const timeParts = normalizedTime.split(":");
 
     if (timeParts.length >= 2) {
       normalizedTime = timeParts.slice(0, 3).join(":");
     }
 
-    // If only HH:mm → append seconds
     if (/^\d{2}:\d{2}$/.test(normalizedTime)) {
       normalizedTime = `${normalizedTime}:00`;
     }
 
-    // Final validation
     if (!/^\d{2}:\d{2}:\d{2}$/.test(normalizedTime)) {
       return res.status(400).json({
         success: false,
@@ -145,15 +300,16 @@ exports.updateSchedule = async (req, res) => {
       });
     }
 
-
-    // Find the schedule
     const schedule = await db.models.Schedule.findByPk(scheduleId);
-    if (!schedule) return res.status(404).json({ success: false, error: "Schedule not found." });
+    if (!schedule) {
+      return res.status(404).json({ success: false, error: "Schedule not found." });
+    }
 
     const parentId = schedule.parentId;
-    if (!parentId) return res.status(400).json({ success: false, error: "Parent ID not found for this schedule." });
+    if (!parentId) {
+      return res.status(400).json({ success: false, error: "Parent ID not found." });
+    }
 
-    // Update the schedule
     await schedule.update({
       date,
       time: normalizedTime,
@@ -162,101 +318,94 @@ exports.updateSchedule = async (req, res) => {
       location: location || null,
     });
 
-    console.log(`✅ Schedule #${scheduleId} updated successfully.`);
-
-    // Immediate API response
     res.json({
       success: true,
-      message: "Schedule updated successfully. Notifications and emails are being processed in the background.",
+      message: "Schedule updated successfully. Notifications are being sent.",
       schedule,
     });
 
-    // 🔹 Background tasks: Emails + Notifications
+    // 🔹 Background emails & notifications
     (async () => {
       try {
-        const proposalEmail = await db.models.ProposalEmail.findOne({ where: { parentId } });
-        if (!proposalEmail) {
-          console.log("⚠️ No proposal email found for parentId:", parentId);
-          return;
-        }
-
-        const recipients = await db.models.ProposalEmailRecipient.findAll({ where: { proposalEmailId: proposalEmail.id } });
-        if (!recipients.length) {
-          console.log("⚠️ No recipients found for this proposal.");
-          return;
-        }
-
-        console.log(`📨 Sending notifications and emails to ${recipients.length} recipients in background...`);
-
-        // Nodemailer setup
-        const transporter = nodemailer.createTransport({
-          host: "smtp.gmail.com",
-          port: 587,
-          secure: false,
-          auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+        const proposalEmail = await db.models.ProposalEmail.findOne({
+          where: { parentId },
         });
+        if (!proposalEmail) return;
 
-        // Email template
+        const recipients = await db.models.ProposalEmailRecipient.findAll({
+          where: { proposalEmailId: proposalEmail.id },
+        });
+        if (!recipients.length) return;
+
         const emailTemplate = (recipient) => `
-          <div style="font-family: Arial,sans-serif; padding: 20px; background: #f4f6f8;">
-            <div style="max-width:600px;margin:auto;background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.1);padding:25px;">
-              <h2 style="color:#2c3e50;text-align:center;">📅 Schedule Update Notification</h2>
-              <p>Dear <b>${recipient.recipientName || "Recipient"}</b>,</p>
-              <p>The schedule for the proposal <b>${proposalEmail.proposalName}</b> has been updated:</p>
-              <table style="width:100%;border-collapse:collapse;margin:15px 0;">
-                <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Date:</b></td><td>${date}</td></tr>
-                <tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Time:</b></td><td>${time}</td></tr>
-                ${location ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Location:</b></td><td>${location}</td></tr>` : ""}
-                ${comment ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;"><b>Comment:</b></td><td>${comment}</td></tr>` : ""}
-                ${description ? `<tr><td style="padding:8px;"><b>Description:</b></td><td>${description}</td></tr>` : ""}
+          <div style="font-family:Arial;padding:20px;background:#f4f6f8">
+            <div style="max-width:600px;margin:auto;background:#fff;padding:25px;border-radius:8px">
+              <h2 style="text-align:center">📅 Schedule Updated</h2>
+              <p>Dear <b>${recipient.recipientName || "User"}</b>,</p>
+              <p>The schedule for <b>${proposalEmail.proposalName}</b> has been updated.</p>
+
+              <table width="100%" cellpadding="6">
+                <tr><td><b>Date:</b></td><td>${date}</td></tr>
+                <tr><td><b>Time:</b></td><td>${normalizedTime}</td></tr>
+                ${location ? `<tr><td><b>Location:</b></td><td>${location}</td></tr>` : ""}
+                ${comment ? `<tr><td><b>Comment:</b></td><td>${comment}</td></tr>` : ""}
+                ${description ? `<tr><td><b>Description:</b></td><td>${description}</td></tr>` : ""}
               </table>
-              <p style="text-align:center;margin:20px 0;">
-                <a href="${proposalEmail.link}" target="_blank" style="background:#007bff;color:white;padding:10px 18px;border-radius:5px;text-decoration:none;">View Proposal</a>
+
+              <p style="text-align:center;margin-top:20px">
+                <a href="${proposalEmail.link}"
+                   style="background:#007bff;color:#fff;padding:10px 18px;border-radius:5px;text-decoration:none">
+                  View Proposal
+                </a>
               </p>
-              <p style="font-size:13px;color:#888;text-align:center;">Best regards,<br><b>${proposalEmail.fromName}</b></p>
+
+              <p style="font-size:13px;color:#888;text-align:center">
+                Regards,<br>${proposalEmail.fromName}
+              </p>
             </div>
           </div>
         `;
 
         for (const recipient of recipients) {
-          // Send email
+          // 📧 SendGrid Email
           try {
-            await transporter.sendMail({
-              from: `"${proposalEmail.fromName}" <${proposalEmail.fromEmail}>`,
+            await sgMail.send({
               to: recipient.recipientEmail,
+              from: {
+                email: process.env.EMAIL_FROM,
+                name: proposalEmail.fromName,
+              },
               subject: `🗓️ Schedule Updated: ${proposalEmail.proposalName}`,
               html: emailTemplate(recipient),
             });
+
             console.log(`📧 Email sent to ${recipient.recipientEmail}`);
           } catch (err) {
-            console.error(`❌ Failed to send email to ${recipient.recipientEmail}:`, err.message);
+            console.error(`❌ Email failed for ${recipient.recipientEmail}`, err.message);
           }
 
-          // Create in-app notification
+          // 🔔 In-app notification
           try {
             await createNotification({
               title: "Schedule Updated",
-              message: `The schedule for proposal "${proposalEmail.proposalName}" has been updated.`,
+              message: `Schedule updated for proposal "${proposalEmail.proposalName}".`,
               type: "info",
               userId: recipient.recipientId,
             });
-            console.log(`🔔 Notification created for user ${recipient.recipientId}`);
           } catch (err) {
-            console.error(`❌ Failed to create notification for user ${recipient.recipientId}:`, err.message);
+            console.error("❌ Notification failed:", err.message);
           }
         }
-
-        console.log("✅ Background emails and notifications task completed.");
       } catch (err) {
-        console.error("💥 Error in background task:", err);
+        console.error("💥 Background task error:", err);
       }
     })();
 
   } catch (error) {
     console.error("💥 Error updating schedule:", error);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
-      error: "Internal server error. Please try again later.",
+      error: "Internal server error.",
     });
   }
 };
