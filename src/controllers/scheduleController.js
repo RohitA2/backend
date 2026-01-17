@@ -868,6 +868,7 @@ exports.getProposalsByUserId = async (req, res) => {
         expirationDate: proposal.expirationDate,
         link: proposal.link,
         createdAt: proposal.createdAt,
+        updatedAt: proposal.updatedAt,
       });
 
       if (proposal.recipients)
