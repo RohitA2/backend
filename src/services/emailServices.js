@@ -222,4 +222,5 @@ module.exports = {
   sendEmailOTP,
   sendResetEmailOTP,
   sendNewsletterEmail,
+  getMailer: getSendGrid,
 };

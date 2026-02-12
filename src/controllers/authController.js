@@ -714,10 +714,14 @@ exports.forgotPassword = async (req, res) => {
 
     const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
     // Send Email
-    await emailService.transporter.sendMail({
-      from: `"SignLink Support" <${process.env.EMAIL_USER}>`,
+    await (await emailService.getMailer()).send({
       to: user.email,
+      from: {
+        email: process.env.SENDGRID_FROM_EMAIL,
+        name: "SignLink Support",
+      },
       subject: "Reset Your SignLink Password",
+      text: `Reset link: ${resetLink} (expires in 15 minutes)`,
       html: `
     <!DOCTYPE html>
     <html lang="en">
@@ -987,7 +991,7 @@ exports.forgotPassword = async (req, res) => {
 
   } catch (err) {
     console.log(err);
-    res.status(500).json({ success: false, message: err.message});
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
